@@ -343,12 +343,18 @@ $('#btn-hud-switch').onclick = (e) => {
 };
 
 // ---------- Network & Autonomous Offline Engine ----------
+const RENDER_SERVER = 'https://blindshot-19b3.onrender.com';
 const defaultServer = import.meta.env.VITE_SERVER_URL || (
   location.protocol === 'https:' || (location.hostname && location.hostname !== 'localhost' && !location.port)
     ? location.origin
-    : `http://${location.hostname || '192.168.100.76'}:2567`
+    : RENDER_SERVER
 );
-let serverUrl = store.get('server', '') || defaultServer;
+let savedServer = store.get('server', '');
+if (savedServer && savedServer.includes('192.168.')) {
+  savedServer = '';
+  store.set('server', '');
+}
+let serverUrl = savedServer || defaultServer;
 let socket;
 
 function myId() {
