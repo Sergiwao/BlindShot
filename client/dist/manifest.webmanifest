@@ -1,0 +1,28 @@
+{
+  "name": "Blind Shot",
+  "short_name": "Blind Shot",
+  "description": "Jeu d'arène tactique à l'aveugle — Développé par Serge le dev",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#141821",
+  "theme_color": "#171b26",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

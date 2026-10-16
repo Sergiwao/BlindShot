@@ -1,0 +1,7 @@
+node_modules/
+client/node_modules/
+server/node_modules/
+scripts/*.p12
+scripts/*.pk8
+scripts/*.der
+.DS_Store

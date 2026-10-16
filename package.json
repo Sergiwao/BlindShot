@@ -1,0 +1,14 @@
+{
+  "name": "blindshot",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "npm --prefix client install && npm --prefix client run build && npm --prefix server install",
+    "start": "node server/index.js",
+    "build:apk": "npm --prefix client run build && node scripts/build-apk.cjs"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.1"
+  }
+}

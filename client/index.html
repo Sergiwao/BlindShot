@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#171b26" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Blind Shot – Tir à l'aveugle multijoueur</title>
+  <meta name="description" content="Blind Shot : jeu multijoueur où chacun vise à l'aveugle. Développé par Serge le dev." />
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <link rel="apple-touch-icon" href="./logo.svg" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <div id="coin-rain" class="coin-rain" aria-hidden="true"></div>
+
+  <!-- LAUNCH INTRO ANIMATION -->
+  <div id="intro-splash" class="intro-splash">
+    <div class="intro-inner">
+      <img src="./logo.svg" class="intro-icon" alt="Logo Blind Shot" />
+      <div class="intro-kicker">Prêt à viser dans le noir ?</div>
+      <h1 class="intro-logo">BLIND<span>SHOT</span></h1>
+      <div class="intro-beam"></div>
+      <div class="intro-credit">Développé par <b>Serge le dev</b></div>
+    </div>
+  </div>
+
+  <main id="ui">
+    <!-- NAME -->
+    <section class="screen" id="screen-name">
+      <div class="brand-hero">
+        <img src="./logo.svg" class="brand-mark-lg" alt="Logo Blind Shot" />
+        <h1 class="logo">Blind<span>Shot</span></h1>
+      </div>
+      <p class="tagline">Vise à l'aveugle. Survis au verdict.</p>
+      <div class="card panel">
+        <label for="input-name">Ton pseudo</label>
+        <input id="input-name" maxlength="14" placeholder="Ex : Zappeur" autocomplete="off" />
+        <button class="btn primary" id="btn-name-ok">C'est parti</button>
+      </div>
+      <footer class="credit-foot">Développé par <b>Serge le dev</b></footer>
+    </section>
+
+    <!-- MENU -->
+    <section class="screen" id="screen-menu">
+      <header class="top">
+        <div class="brand-row">
+          <img src="./logo.svg" class="brand-mark" alt="Blind Shot" />
+          <h1 class="logo small">Blind<span>Shot</span></h1>
+        </div>
+        <div class="top-right">
+          <button class="coin-pill" id="btn-menu-coins" title="Ouvrir l'armurerie">
+            <span class="coin-dot">SC</span><b id="menu-coins">0 SC</b>
+          </button>
+          <button class="chip" id="btn-settings" aria-label="Paramètres">
+            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3h-4l-.4 2.9a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1c.5.4 1.1.7 1.7 1L11 21h4l.4-2.9c.6-.3 1.2-.6 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>
+          </button>
+        </div>
+      </header>
+      <div class="hello">Salut <b id="menu-name"></b> <span class="pad-badge" id="pad-status" style="display:none">Manette connectée</span></div>
+      <div class="menu-bottom">
+        <div class="section-label">En ligne</div>
+        <button class="btn primary big" id="btn-create">Créer un salon</button>
+        <div class="join-row panel">
+          <input id="input-code" maxlength="4" placeholder="CODE" autocomplete="off" />
+          <button class="btn dark" id="btn-join">Rejoindre</button>
+        </div>
+        <div class="section-label desktop-only">Sur ce PC</div>
+        <button class="btn big desktop-only" id="btn-local">Mode local – manettes</button>
+        <div class="menu-row-2">
+          <button class="btn" id="btn-armory">Armurerie</button>
+          <button class="btn" id="btn-custom">Personnaliser</button>
+        </div>
+        <div class="credit-foot">Développé par <b>Serge le dev</b></div>
+      </div>
+    </section>
+
+    <!-- CUSTOMIZE -->
+    <section class="screen" id="screen-custom">
+      <header class="top">
+        <button class="chip" id="btn-custom-back" aria-label="Retour">&larr;</button>
+        <h2>Ton perso</h2>
+        <button class="chip small-text" id="btn-custom-shot" title="Tester le laser">Tir test</button>
+      </header>
+      <div class="custom-stage-hint">Glisse sur le personnage pour le tourner</div>
+      <div class="custom-panel panel">
+        <div class="custom-tabs" id="custom-tabs">
+          <button class="ctab active" data-tab="body">Corps</button>
+          <button class="ctab" data-tab="laser">Laser</button>
+          <button class="ctab" data-tab="hat">Chapeau</button>
+          <button class="ctab" data-tab="face">Visage</button>
+          <button class="ctab" data-tab="name">Pseudo</button>
+        </div>
+        <div class="custom-pane active" data-pane="body">
+          <div class="swatches" id="sw-body"></div>
+        </div>
+        <div class="custom-pane" data-pane="laser">
+          <div class="swatches" id="sw-laser"></div>
+        </div>
+        <div class="custom-pane" data-pane="hat">
+          <div class="pills" id="pl-hat"></div>
+        </div>
+        <div class="custom-pane" data-pane="face">
+          <div class="pills" id="pl-face"></div>
+        </div>
+        <div class="custom-pane" data-pane="name">
+          <input id="input-rename" maxlength="14" placeholder="Ton pseudo" />
+        </div>
+      </div>
+    </section>
+
+    <!-- ARMORY (3D Weapon Showcase in center + Left/Right navigation + Bottom Buy/Equip Dock) -->
+    <section class="screen" id="screen-armory">
+      <header class="top">
+        <button class="chip" id="btn-armory-back" aria-label="Retour">&larr;</button>
+        <h2>Armurerie 3D</h2>
+        <div class="top-right">
+          <div class="coin-pill"><span class="coin-dot">SC</span><b id="armory-coins">0 SC</b></div>
+          <button class="chip small-text" id="btn-armory-shot">Tir test</button>
+        </div>
+      </header>
+
+      <div class="custom-stage-hint">Glisse sur l'arme 3D pour l'inspecter · +5 SC/élim. · +20 SC/victoire</div>
+
+      <!-- Center 3D Stage Navigation Arrows -->
+      <div class="armory-stage-nav">
+        <button class="stage-arrow" id="btn-armory-prev" aria-label="Arme précédente">&lsaquo;</button>
+        <div class="stage-counter" id="armory-counter">1 / 7</div>
+        <button class="stage-arrow" id="btn-armory-next" aria-label="Arme suivante">&rsaquo;</button>
+      </div>
+
+      <!-- Bottom Showcase Card (No Scroll!) -->
+      <div class="armory-showcase-dock panel">
+        <div class="armory-strip" id="armory-strip"></div>
+        <div class="armory-detail">
+          <div class="armory-title-row">
+            <h3 id="armory-item-name">Blaster Classique</h3>
+            <span class="tag eq" id="armory-item-badge">Équipé</span>
+          </div>
+          <p id="armory-item-desc">Tir laser franc et équilibré.</p>
+        </div>
+        <div class="armory-actions-row">
+          <button class="btn primary big" id="btn-armory-action">Équipé</button>
+          <button class="btn sm-gren" id="btn-buy-grenade" title="Acheter une grenade (+1)">
+            <span>+1 Grenade (10 SC)</span>
+            <small id="armory-gren-count">Stock : x1</small>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- CREATE (arena select) -->
+    <section class="screen" id="screen-create">
+      <header class="top">
+        <button class="chip" id="btn-create-back" aria-label="Retour">&larr;</button>
+        <h2>Choisis l'arène</h2>
+        <span></span>
+      </header>
+      <div class="arenas" id="arena-list"></div>
+      <button class="btn primary big" id="btn-create-ok">Créer</button>
+    </section>
+
+    <!-- LOBBY -->
+    <section class="screen" id="screen-lobby">
+      <header class="top">
+        <button class="chip" id="btn-lobby-leave" aria-label="Quitter">&times;</button>
+        <div class="code-box">Code <b id="lobby-code">----</b></div>
+        <button class="chip small-text" id="btn-copy" aria-label="Copier">Copier</button>
+      </header>
+      <div class="lobby-arena panel" id="lobby-arena"></div>
+      <ul class="players" id="lobby-players"></ul>
+      <div class="lobby-actions">
+        <button class="btn" id="btn-bot">Ajouter un bot</button>
+        <button class="btn primary big" id="btn-start">Lancer la partie</button>
+        <p class="wait" id="lobby-wait">En attente de l'hôte…</p>
+      </div>
+    </section>
+
+    <!-- LOCAL LOBBY (gamepads) -->
+    <section class="screen" id="screen-local">
+      <header class="top">
+        <button class="chip" id="btn-local-back" aria-label="Retour">&larr;</button>
+        <h2>Mode local</h2>
+        <span></span>
+      </header>
+      <p class="local-help">Chaque joueur appuie sur <kbd>Croix / A</kbd> de sa manette pour rejoindre.
+        Clavier : <kbd>Entrée</kbd>. <kbd>Rond / B</kbd> pour quitter.<br/>
+        <small>En jeu : <kbd>R2</kbd> pour changer d'arme / grenade · vibrations aux bords de l'arène.</small></p>
+      <ul class="players local-slots" id="local-slots"></ul>
+      <div class="local-opts panel">
+        <div class="opt-row"><span>Arène</span><div class="pills" id="local-arena"></div></div>
+        <div class="opt-row"><span>Temps de fuite</span><div class="pills" id="local-time"></div></div>
+      </div>
+      <div class="lobby-actions">
+        <button class="btn primary big" id="btn-local-start">Lancer <small>(Options / Start)</small></button>
+      </div>
+    </section>
+
+    <!-- HUD (online) -->
+    <section class="screen hud" id="screen-hud">
+      <div class="hud-top">
+        <div class="hud-round" id="hud-round">Manche 1</div>
+        <div class="hud-timer" id="hud-timer"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="track"/><circle cx="50" cy="50" r="44" class="bar" id="timer-bar"/></svg><span id="timer-num">5</span></div>
+        <div class="hud-alive" id="hud-alive">6 en vie</div>
+      </div>
+      <div class="banner" id="banner"></div>
+      <div class="feed" id="feed"></div>
+      <button class="weapon-switch-btn" id="btn-hud-switch">
+        <span class="ws-label">Arme active</span>
+        <b id="hud-weapon-name">Blaster Classique</b>
+        <small id="hud-weapon-hint">Changer (Clic / R2)</small>
+      </button>
+      <div class="joy left" id="joy-move"><div class="knob"></div><small>Bouger</small></div>
+      <div class="joy right" id="joy-aim"><div class="knob"></div><small>Viser</small></div>
+    </section>
+
+    <!-- HUD (local) -->
+    <section class="screen hud" id="screen-lhud">
+      <div class="hud-top">
+        <div class="hud-round" id="lhud-turn">Tour 1</div>
+        <div class="hud-timer" id="lhud-timer"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="track"/><circle cx="50" cy="50" r="44" class="bar" id="ltimer-bar"/></svg><span id="ltimer-num">5</span></div>
+        <div class="hud-alive" id="lhud-shooter">—</div>
+      </div>
+      <div class="banner" id="lbanner"></div>
+      <div class="feed" id="lfeed"></div>
+      <button class="weapon-switch-btn local-switch" id="btn-lhud-switch">
+        <span class="ws-label">Équipement du tireur</span>
+        <b id="lhud-weapon-name">Blaster Classique</b>
+        <small>Changer (R2 / Clic)</small>
+      </button>
+      <div class="local-roster" id="local-roster"></div>
+    </section>
+
+    <!-- GAME OVER -->
+    <section class="screen" id="screen-over">
+      <div class="card panel over-card">
+        <div class="over-kicker" id="over-kicker">Fin de partie</div>
+        <h2 id="over-title">Victoire</h2>
+        <div class="over-coins" id="over-coins"></div>
+        <ol id="over-rank"></ol>
+        <button class="btn primary big" id="btn-over-lobby">Retour au salon</button>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <dialog id="dlg-settings" class="panel">
+      <h3>Serveur</h3>
+      <p class="muted">Adresse du serveur de jeu en ligne</p>
+      <input id="input-server" placeholder="https://..." />
+      <div class="row">
+        <button class="btn ghost" id="btn-settings-cancel">Annuler</button>
+        <button class="btn primary" id="btn-settings-ok">OK</button>
+      </div>
+    </dialog>
+  </main>
+
+  <div id="toast"></div>
+  <div id="conn" class="conn">Connexion…</div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

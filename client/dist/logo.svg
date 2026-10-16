@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Outer Low-Poly Octagonal Badge (Same DA) -->
+  <polygon points="72,8 184,8 248,72 248,184 184,248 72,248 8,184 8,72" fill="#ffb340"/>
+  <polygon points="78,18 178,18 238,78 238,178 178,238 78,238 18,178 18,78" fill="#141822"/>
+  <polygon points="78,18 178,18 238,78 128,128 18,78" fill="#23293a"/>
+  <polygon points="238,78 238,178 178,238 128,128" fill="#1b202e"/>
+
+  <!-- Low-Poly Smiling Head (Faceted Golden-Amber Sphere) -->
+  <!-- Base Head Polygon -->
+  <polygon points="96,42 160,42 204,76 214,132 194,186 156,214 100,214 62,186 42,132 52,76" fill="#f59e24"/>
+  <!-- Top Light Facet -->
+  <polygon points="96,42 160,42 204,76 128,112 52,76" fill="#ffca52"/>
+  <!-- Left Light Facet -->
+  <polygon points="52,76 128,112 42,132" fill="#ffb838"/>
+  <!-- Right Mid Facet -->
+  <polygon points="204,76 214,132 128,112" fill="#f0961e"/>
+  <!-- Lower Left Facet -->
+  <polygon points="42,132 128,112 128,172 62,186" fill="#f59e24"/>
+  <!-- Lower Right Shadow Facet -->
+  <polygon points="214,132 194,186 128,172 128,112" fill="#e08214"/>
+  <!-- Chin Facet -->
+  <polygon points="62,186 128,172 194,186 156,214 100,214" fill="#cf710e"/>
+
+  <!-- Cool Low-Poly Sunglasses (Blind Shot Style) -->
+  <!-- Top Frame Bar & Temples -->
+  <polygon points="38,94 218,94 214,106 42,106" fill="#141822"/>
+  <!-- Left Lens -->
+  <polygon points="50,96 120,96 114,140 60,140 48,124" fill="#141822"/>
+  <!-- Right Lens -->
+  <polygon points="136,96 206,96 208,124 196,140 142,140" fill="#141822"/>
+  <!-- Nose Bridge -->
+  <polygon points="116,96 140,96 136,112 120,112" fill="#141822"/>
+  <!-- Left Lens Glint (Crisp Diagonal Reflection) -->
+  <polygon points="64,102 80,102 68,132 56,132" fill="#fbf7f0"/>
+  <polygon points="86,102 94,102 82,132 74,132" fill="#e8603c"/>
+  <!-- Right Lens Glint (Crisp Diagonal Reflection) -->
+  <polygon points="150,102 166,102 154,132 142,132" fill="#fbf7f0"/>
+  <polygon points="172,102 180,102 168,132 160,132" fill="#e8603c"/>
+
+  <!-- Confident Low-Poly Smile -->
+  <polygon points="80,156 176,156 164,186 128,194 92,186" fill="#141822"/>
+  <!-- Bright Teeth Strip -->
+  <polygon points="86,160 170,160 162,174 94,174" fill="#fbf7f0"/>
+  <!-- Tongue Accent -->
+  <polygon points="104,178 152,178 146,186 128,190 110,186" fill="#e8603c"/>
+</svg>
