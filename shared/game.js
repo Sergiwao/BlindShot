@@ -51,6 +51,24 @@ export const WEAPONS = {
     price: 75,
     desc: 'Sceptre doré serti d\'un cristal rubis résonnant.',
   },
+  vortex: {
+    id: 'vortex',
+    name: 'Vortex Cosmique',
+    price: 85,
+    desc: 'Canon à gravité obscure projetant une onde d\'impact élargie.',
+  },
+  zeus: {
+    id: 'zeus',
+    name: 'Triple Foudre',
+    price: 110,
+    desc: 'Foudroyeur divin : projette 3 éclairs en éventail pour faucher plusieurs cibles !',
+  },
+  orbital: {
+    id: 'orbital',
+    name: 'Canon Orbital',
+    price: 145,
+    desc: 'Satellite photonique : rayon colossal géant qui pulvérise toute l\'arène.',
+  },
 };
 
 // theme: floor = sol de l'arène, line = bordure, accent = détails,
@@ -188,34 +206,73 @@ export function rayCircle(ox, oz, dx, dz, cx, cz, r) {
 }
 
 /**
- * Compute a laser shot from `p` ({x,z,angle}) against `targets` (array of {id,x,z}).
- * Stops at obstacles and arena walls. Returns { x, z, ex, ez, hit } (hit = target or null).
+ * Compute a laser shot from `p` ({x,z,angle,look}) against `targets` (array of {id,x,z}).
+ * Stops at obstacles and arena walls.
+ * Returns { x, z, ex, ez, hit, hits, subBeams }
  */
 export function computeShot(arena, zone, p, targets) {
-  const dx = Math.cos(p.angle), dz = Math.sin(p.angle);
-  const ox = p.x + dx * (PLAYER_RADIUS + 0.05), oz = p.z + dz * (PLAYER_RADIUS + 0.05);
-  let best = LASER_RANGE, hit = null;
-  for (const o of arena.obstacles) {
-    const t = rayBox(ox, oz, dx, dz, o);
-    if (t < best) { best = t; hit = null; }
+  const weapon = p.look?.weapon || p.weapon || 'blaster';
+  const hitIds = new Set();
+  const subBeams = [];
+
+  function castSingleRay(ang, colRadius = PLAYER_RADIUS) {
+    const dx = Math.cos(ang), dz = Math.sin(ang);
+    const ox = p.x + dx * (PLAYER_RADIUS + 0.05), oz = p.z + dz * (PLAYER_RADIUS + 0.05);
+    let best = LASER_RANGE, hitTarget = null;
+    for (const o of arena.obstacles) {
+      const t = rayBox(ox, oz, dx, dz, o);
+      if (t < best) { best = t; hitTarget = null; }
+    }
+    for (const q of targets) {
+      if (q === p || q.id === p.id) continue;
+      const t = rayCircle(ox, oz, dx, dz, q.x, q.z, colRadius);
+      if (t < best) { best = t; hitTarget = q; }
+    }
+    if (arena.shape === 'square') {
+      const s = zone;
+      const tx = dx > 0 ? (s - ox) / dx : dx < 0 ? (-s - ox) / dx : Infinity;
+      const tz = dz > 0 ? (s - oz) / dz : dz < 0 ? (-s - oz) / dz : Infinity;
+      const tw = Math.min(tx, tz);
+      if (tw < best) { best = tw; hitTarget = null; }
+    } else {
+      const b = ox * dx + oz * dz, c = ox * ox + oz * oz - zone * zone;
+      const tw = -b + Math.sqrt(Math.max(0, b * b - c));
+      if (tw < best) { best = tw; hitTarget = null; }
+    }
+    if (hitTarget) hitIds.add(hitTarget.id);
+    return { x: ox, z: oz, ex: ox + dx * best, ez: oz + dz * best, hit: hitTarget };
   }
-  for (const q of targets) {
-    if (q === p) continue;
-    const t = rayCircle(ox, oz, dx, dz, q.x, q.z, PLAYER_RADIUS);
-    if (t < best) { best = t; hit = q; }
-  }
-  if (arena.shape === 'square') {
-    const s = zone;
-    const tx = dx > 0 ? (s - ox) / dx : dx < 0 ? (-s - ox) / dx : Infinity;
-    const tz = dz > 0 ? (s - oz) / dz : dz < 0 ? (-s - oz) / dz : Infinity;
-    const tw = Math.min(tx, tz);
-    if (tw < best) { best = tw; hit = null; }
+
+  let mainRay;
+  if (weapon === 'zeus') {
+    // Triple Foudre : tire 3 éclairs en éventail (-15°, 0°, +15°)
+    const angles = [p.angle - 0.26, p.angle, p.angle + 0.26];
+    const rays = angles.map((a) => castSingleRay(a, PLAYER_RADIUS * 1.05));
+    mainRay = rays[1]; // center ray
+    subBeams.push(rays[0], rays[1], rays[2]);
+  } else if (weapon === 'orbital') {
+    // Canon Orbital : rayon géant très large qui fauche tout le couloir
+    mainRay = castSingleRay(p.angle, PLAYER_RADIUS * 1.55);
+    subBeams.push(mainRay);
+  } else if (weapon === 'vortex') {
+    // Vortex Cosmique : rayon gravitationnel élargi
+    mainRay = castSingleRay(p.angle, PLAYER_RADIUS * 1.35);
+    subBeams.push(mainRay);
   } else {
-    const b = ox * dx + oz * dz, c = ox * ox + oz * oz - zone * zone;
-    const tw = -b + Math.sqrt(Math.max(0, b * b - c));
-    if (tw < best) { best = tw; hit = null; }
+    mainRay = castSingleRay(p.angle, PLAYER_RADIUS);
+    subBeams.push(mainRay);
   }
-  return { x: ox, z: oz, ex: ox + dx * best, ez: oz + dz * best, hit };
+
+  const hits = targets.filter((q) => hitIds.has(q.id));
+  return {
+    x: mainRay.x,
+    z: mainRay.z,
+    ex: mainRay.ex,
+    ez: mainRay.ez,
+    hit: hits[0] || null,
+    hits,
+    subBeams,
+  };
 }
 
 /**

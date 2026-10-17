@@ -85,6 +85,11 @@ export class LocalGame {
     $('#btn-lhud-switch').onclick = () => {
       if (this.state === 'aim' && this.shooter()) this.cycleShooterWeapon(this.shooter());
     };
+    this.paused = false;
+    $('#btn-local-pause').onclick = () => { sound.ui('chip'); this.togglePause(); };
+    $('#btn-pause-resume').onclick = () => { sound.ui('chip'); this.resume(); };
+    $('#btn-pause-restart').onclick = () => { sound.ui('primary'); this.restart(); };
+    $('#btn-pause-quit').onclick = () => { sound.ui('back'); this.quitToLobby(); };
   }
 
   // ---------- Lobby ----------
@@ -99,12 +104,46 @@ export class LocalGame {
     this.renderLobby();
   }
 
+  pause() {
+    if (this.paused || !['intro', 'aim', 'reveal'].includes(this.state)) return;
+    this.paused = true;
+    const dlg = $('#dlg-local-pause');
+    if (dlg && typeof dlg.showModal === 'function') {
+      try { dlg.showModal(); } catch (e) {}
+    }
+  }
+
+  resume() {
+    this.paused = false;
+    const dlg = $('#dlg-local-pause');
+    if (dlg && dlg.open) {
+      try { dlg.close(); } catch (e) {}
+    }
+  }
+
+  togglePause() {
+    if (this.paused) this.resume();
+    else this.pause();
+  }
+
+  restart() {
+    this.resume();
+    this.start();
+  }
+
+  quitToLobby() {
+    this.resume();
+    this.openLobby();
+  }
+
   exit() {
+    this.resume();
     this.clearMeshes();
     this.aim.visible = false;
     this.grenAim.visible = false;
     this.active = false;
     this.state = 'off';
+    sound.startBgm();
     this.show('menu');
   }
 
@@ -213,6 +252,8 @@ export class LocalGame {
   // ---------- Game ----------
   start() {
     if (this.players.length < 2) return this.toast('Il faut au moins 2 joueurs');
+    this.resume();
+    sound.stopBgm();
     this.arena = ARENAS[this.arenaId];
     this.zone = this.arena.size;
     this.turn = 0;
@@ -371,6 +412,7 @@ export class LocalGame {
     this.state = 'over';
     this.aim.visible = false;
     this.grenAim.visible = false;
+    sound.startBgm();
     const bestKills = winner ? winner.kills : Math.max(0, ...this.players.map((p) => p.kills));
     setTimeout(() => {
       sound.victory();
@@ -397,6 +439,7 @@ export class LocalGame {
         fire: e.has(' '),
         switchW: e.has('e') || e.has('tab'),
         join: e.has('enter'), back: e.has('escape'), start: false,
+        pause: e.has('p') || e.has('escape'),
       };
     }
     const pad = navigator.getGamepads()[dev];
@@ -412,6 +455,7 @@ export class LocalGame {
       fire: edge(B.SOUTH) || edge(B.R1),
       switchW: edge(B.R2),
       join: edge(B.SOUTH), back: edge(B.EAST), start: edge(B.START),
+      pause: edge(B.START),
     };
   }
 
@@ -473,6 +517,23 @@ export class LocalGame {
       this.endPoll();
       return;
     }
+
+    if (this.paused) {
+      for (const [, inp] of pads) {
+        if (inp.pause || inp.back) { this.resume(); break; }
+      }
+      const kb = this.readDev('kb');
+      if (kb.pause || kb.back) this.resume();
+      this.endPoll();
+      return;
+    }
+
+    // Toggle pause during active gameplay
+    for (const [, inp] of pads) {
+      if (inp.pause) { this.pause(); this.endPoll(); return; }
+    }
+    const kb = this.readDev('kb');
+    if (kb.pause) { this.pause(); this.endPoll(); return; }
 
     const s = this.shooter();
     this.timer -= dt;

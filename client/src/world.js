@@ -83,13 +83,14 @@ export class World {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.0;
+    this.renderer.toneMappingExposure = 1.15;
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0xcfe0dc);
-    this.scene.fog = new THREE.Fog(0xcfe0dc, 40, 110);
+    // Light subtle background fog only for distant landscape, never obscuring the arena
+    this.scene.fog = new THREE.Fog(0xcfe0dc, 120, 350);
 
-    this.camera = new THREE.PerspectiveCamera(42, 1, 0.1, 300);
+    this.camera = new THREE.PerspectiveCamera(42, 1, 0.1, 350);
     this.camTarget = new THREE.Vector3(0, 1, 0);
     // Start high & wide for launch animation
     this.camera.position.set(0, 14, 18);
@@ -97,12 +98,12 @@ export class World {
     this.camLook = new THREE.Vector3(0, 1, 0);
     this.arenaIntroT = 0;
 
-    this.hemi = new THREE.HemisphereLight(0xfff4e0, 0x5d6b5a, 1.35);
-    this.sun = new THREE.DirectionalLight(0xffe6c4, 2.4);
-    this.sun.position.set(-12, 22, 10);
+    this.hemi = new THREE.HemisphereLight(0xfff7e8, 0x5d685c, 1.5);
+    this.sun = new THREE.DirectionalLight(0xffebd2, 2.6);
+    this.sun.position.set(-14, 24, 12);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(mobile ? 1024 : 2048, mobile ? 1024 : 2048);
-    const sc = this.sun.shadow.camera; sc.left = sc.bottom = -24; sc.right = sc.top = 24; sc.far = 80;
+    const sc = this.sun.shadow.camera; sc.left = sc.bottom = -26; sc.right = sc.top = 26; sc.far = 90;
     this.sun.shadow.bias = -0.0004;
     this.sun.shadow.normalBias = 0.02;
     this.scene.add(this.hemi, this.sun);
@@ -125,9 +126,14 @@ export class World {
     if (this.fitSize) this.fitArena(this.fitSize);
   }
 
-  setSky(hex) {
+  setSky(hex, isArena = false) {
     this.scene.background.setHex(hex);
-    this.scene.fog.color.setHex(hex);
+    if (isArena) {
+      // In arena, push fog far beyond the action to guarantee crystal-clear view on all mobile devices
+      this.scene.fog = new THREE.Fog(hex, 160, 450);
+    } else {
+      this.scene.fog = new THREE.Fog(hex, 90, 260);
+    }
   }
 
   addPedestal() {
@@ -156,7 +162,8 @@ export class World {
   setShowcaseMesh(mesh) {
     this.showcaseGroup.clear();
     if (!mesh) return;
-    mesh.scale.setScalar(2.85);
+    const portrait = innerWidth < innerHeight;
+    mesh.scale.setScalar(portrait ? 1.6 : 2.4);
     this.showcaseGroup.add(mesh);
   }
 
@@ -166,20 +173,22 @@ export class World {
     this.showcaseGroup.visible = mode === 'armory';
     this.fitSize = null;
     this.camMode = mode;
-    this.setSky(mode === 'armory' ? 0xd8dfd8 : 0xcfe0dc);
+    this.setSky(mode === 'armory' ? 0xd8dfd8 : 0xcfe0dc, false);
   }
 
   fitArena(size) {
     this.fitSize = size;
     const a = this.camera.aspect;
     const vfov = THREE.MathUtils.degToRad(this.camera.fov);
-    const needH = size * 2.3;
-    const distV = needH / 2 / Math.tan(vfov / 2);
-    const distH = needH / 2 / (Math.tan(vfov / 2) * a);
-    const d = Math.max(distV, distH) * 0.98;
-    const tilt = 1.0;
-    this.camPos.set(0, Math.sin(tilt) * d, Math.cos(tilt) * d + (a < 1 ? 1.5 : 0));
-    this.camLook.set(0, 0, a < 1 ? 1.2 : 0.6);
+    const needV = size * 2.12;
+    const distV = (needV / 2) / Math.tan(vfov / 2);
+    // On portrait mobile (a < 1), frame arena tightly and immersively without pushing camera into deep distance
+    const d = a < 1
+      ? Math.max(distV * 1.08, (size * 1.82) / (2 * Math.tan(vfov / 2) * Math.max(a, 0.62)))
+      : distV * 1.02;
+    const tilt = a < 1 ? 1.06 : 1.02;
+    this.camPos.set(0, Math.sin(tilt) * d, Math.cos(tilt) * d + (a < 1 ? 0.6 : 0));
+    this.camLook.set(0, 0, a < 1 ? 0.8 : 0.4);
   }
 
   buildArena(arena, zone) {
@@ -189,7 +198,7 @@ export class World {
     this.arenaGroup.clear();
     this.camMode = 'arena';
     const th = arena.theme;
-    this.setSky(th.sky);
+    this.setSky(th.sky, true);
     this.arena = arena;
     const S = arena.size;
     const rand = rng(S * 97 + arena.id.length);
@@ -402,11 +411,11 @@ export class World {
   beam(x1, z1, x2, z2, color, delay = 0, weapon = 'blaster') {
     const len = Math.max(0.01, Math.hypot(x2 - x1, z2 - z1));
     const grp = new THREE.Group();
-    const thick = weapon === 'bazooka' ? 0.30 : weapon === 'shark' ? 0.22 : weapon === 'royal' ? 0.20 : 0.16;
-    const beamColor = weapon === 'duck' ? new THREE.Color('#f2c12e') : color;
-    const coreColor = weapon === 'royal' ? 0xffe699 : 0xffffff;
-    const outer = new THREE.Mesh(new THREE.BoxGeometry(1, thick, thick), new THREE.MeshBasicMaterial({ color: beamColor, transparent: true }));
-    const core = new THREE.Mesh(new THREE.BoxGeometry(1, thick * 0.4, thick * 1.12), new THREE.MeshBasicMaterial({ color: coreColor, transparent: true }));
+    const thick = weapon === 'orbital' ? 0.48 : weapon === 'vortex' ? 0.36 : weapon === 'bazooka' ? 0.30 : weapon === 'shark' ? 0.22 : weapon === 'zeus' ? 0.24 : weapon === 'royal' ? 0.20 : 0.16;
+    const beamColor = weapon === 'orbital' ? new THREE.Color('#ffe26a') : weapon === 'vortex' ? new THREE.Color('#9b4df0') : weapon === 'zeus' ? new THREE.Color('#46d2ff') : weapon === 'duck' ? new THREE.Color('#f2c12e') : color;
+    const coreColor = weapon === 'orbital' ? 0xffffff : weapon === 'vortex' ? 0x2b104a : weapon === 'royal' ? 0xffe699 : 0xffffff;
+    const outer = new THREE.Mesh(new THREE.BoxGeometry(1, thick, thick), new THREE.MeshBasicMaterial({ color: beamColor, transparent: true, opacity: weapon === 'vortex' ? 0.92 : 0.85 }));
+    const core = new THREE.Mesh(new THREE.BoxGeometry(1, thick * 0.45, thick * 1.15), new THREE.MeshBasicMaterial({ color: coreColor, transparent: true }));
     outer.position.x = core.position.x = 0.5;
     grp.add(outer, core);
     grp.position.set(x1, 0.95, z1);
@@ -624,12 +633,12 @@ export class World {
       this.camPos.set(0, 1.75, dist);
       this.camLook.set(0, 0.35, 0);
     } else if (this.camMode === 'armory') {
-      // Frame the 3D weapon showcase right in the center of the screen
-      const dist = portrait ? 3.55 : 2.95;
-      this.camPos.set(0, 1.52, dist);
-      this.camLook.set(0, 0.86, 0);
+      // Frame the 3D weapon showcase cleanly above the bottom card without cutting off
+      const dist = portrait ? 3.85 : 2.95;
+      this.camPos.set(0, portrait ? 1.62 : 1.52, dist);
+      this.camLook.set(0, portrait ? 1.05 : 0.86, 0);
       if (this.showcaseGroup.visible) {
-        this.showcaseGroup.position.y = 1.18 + Math.sin(t * 2.5) * 0.06;
+        this.showcaseGroup.position.y = (portrait ? 1.28 : 1.18) + Math.sin(t * 2.5) * 0.04;
       }
     }
     this.camera.position.lerp(this.camPos, Math.min(1, dt * 4));

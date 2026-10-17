@@ -168,6 +168,56 @@ export function buildWeaponMesh(weaponId, laserColor, bodyMat) {
     return g;
   }
 
+  if (weaponId === 'vortex') {
+    // Dark cosmic gravitational canon with floating vortex rings
+    const coreMat = mat('#181424', { roughness: 0.35, metalness: 0.3 });
+    const mainBody = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 0.52, 7), coreMat);
+    mainBody.rotation.z = Math.PI / 2; mainBody.position.x = 0.22; mainBody.castShadow = true;
+    const ring1 = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.025, 4, 10), mat('#7a3cd9', { metalness: 0.5 }));
+    ring1.rotation.y = Math.PI / 2; ring1.position.x = 0.38;
+    const ring2 = new THREE.Mesh(new THREE.TorusGeometry(0.20, 0.022, 4, 10), mat('#d93cb0', { metalness: 0.5 }));
+    ring2.rotation.y = Math.PI / 2; ring2.position.x = 0.50;
+    const darkOrb = new THREE.Mesh(new THREE.DodecahedronGeometry(0.12, 0), mat('#2b104a', { roughness: 0.2 }));
+    darkOrb.position.x = 0.52;
+    g.add(mainBody, ring1, ring2, darkOrb);
+    g.userData.spinGem = ring2;
+    return g;
+  }
+
+  if (weaponId === 'zeus') {
+    // Divine Triple-Lightning Striker: 3-prong gold fork with crackling conductor nodes
+    const goldMat = mat('#d9a93a', { metalness: 0.65, roughness: 0.3 });
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.44, 6), mat('#22202b'));
+    handle.rotation.z = Math.PI / 2; handle.position.x = 0.16;
+    const cross = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.32, 0.08), goldMat);
+    cross.position.x = 0.34;
+    // 3 prongs
+    for (const offset of [-0.13, 0, 0.13]) {
+      const prong = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.28, 5), goldMat);
+      prong.rotation.z = -Math.PI / 2; prong.position.set(0.48, offset, 0);
+      const tipOrb = new THREE.Mesh(new THREE.OctahedronGeometry(0.045, 0), mat('#42d9ff', { roughness: 0.2 }));
+      tipOrb.position.set(0.64, offset, 0);
+      g.add(prong, tipOrb);
+    }
+    g.add(handle, cross);
+    return g;
+  }
+
+  if (weaponId === 'orbital') {
+    // Heavy Photon Satellite Cannon: long precision chassis + multi-lens emitter
+    const alloyMat = mat('#353b4d', { metalness: 0.45, roughness: 0.4 });
+    const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.16, 0.14), alloyMat);
+    barrel.position.x = 0.28; barrel.castShadow = true;
+    const railTop = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.62, 6), mat('#d9a93a', { metalness: 0.6 }));
+    railTop.rotation.z = Math.PI / 2; railTop.position.set(0.28, 0.11, 0);
+    const dish = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.08, 0.14, 8), mat('#202430', { metalness: 0.6 }));
+    dish.rotation.z = -Math.PI / 2; dish.position.x = 0.66;
+    const corePhoton = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), mat('#ffdc62', { roughness: 0.1 }));
+    corePhoton.position.x = 0.70;
+    g.add(barrel, railTop, dish, corePhoton);
+    return g;
+  }
+
   // Default: 'blaster'
   const gunBody = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.16, 0.14), mat('#3a3a46', { roughness: 0.5 }));
   gunBody.position.x = 0.15; gunBody.castShadow = true;

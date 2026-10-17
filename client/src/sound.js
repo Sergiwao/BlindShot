@@ -310,6 +310,89 @@ class SoundEngine {
       return;
     }
 
+    if (weapon === 'vortex') {
+      // Cosmic gravity vortex: dark FM whoosh + resonant space sweep
+      const osc = ctx.createOscillator();
+      const mod = ctx.createOscillator();
+      const modG = ctx.createGain();
+      const g = ctx.createGain();
+      const flt = ctx.createBiquadFilter();
+      mod.type = 'sine';
+      mod.frequency.setValueAtTime(32, t0);
+      mod.frequency.exponentialRampToValueAtTime(140, t0 + 0.28);
+      modG.gain.setValueAtTime(320, t0);
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(440, t0);
+      osc.frequency.exponentialRampToValueAtTime(65, t0 + 0.38);
+      mod.connect(modG);
+      modG.connect(osc.frequency);
+      flt.type = 'bandpass';
+      flt.frequency.setValueAtTime(650, t0);
+      flt.frequency.exponentialRampToValueAtTime(220, t0 + 0.38);
+      flt.Q.value = 4.2;
+      g.gain.setValueAtTime(0.001, t0);
+      g.gain.linearRampToValueAtTime(0.24, t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.42);
+      osc.connect(flt).connect(g).connect(ctx.destination);
+      mod.start(t0); osc.start(t0);
+      mod.stop(t0 + 0.44); osc.stop(t0 + 0.44);
+      return;
+    }
+
+    if (weapon === 'zeus') {
+      // Divine triple thunderbolt: 3 micro-bursts of crackling electric snaps
+      [0, 0.045, 0.09].forEach((off, idx) => {
+        const ts = t0 + off;
+        const osc = ctx.createOscillator();
+        const noise = ctx.createOscillator();
+        const flt = ctx.createBiquadFilter();
+        const g = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(1800 - idx * 280, ts);
+        osc.frequency.exponentialRampToValueAtTime(120, ts + 0.16);
+        noise.type = 'square';
+        noise.frequency.setValueAtTime(220, ts);
+        flt.type = 'bandpass';
+        flt.frequency.setValueAtTime(2400 - idx * 300, ts);
+        flt.Q.value = 6;
+        g.gain.setValueAtTime(0.001, ts);
+        g.gain.linearRampToValueAtTime(0.22, ts + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.001, ts + 0.18);
+        osc.connect(flt); noise.connect(flt);
+        flt.connect(g).connect(ctx.destination);
+        osc.start(ts); noise.start(ts);
+        osc.stop(ts + 0.2); noise.stop(ts + 0.2);
+      });
+      return;
+    }
+
+    if (weapon === 'orbital') {
+      // Giant photon satellite strike: piercing laser drop + colossal seismic bass
+      const beam = ctx.createOscillator();
+      const sub = ctx.createOscillator();
+      const flt = ctx.createBiquadFilter();
+      const g = ctx.createGain();
+      beam.type = 'sawtooth';
+      beam.frequency.setValueAtTime(2200, t0);
+      beam.frequency.exponentialRampToValueAtTime(180, t0 + 0.45);
+      sub.type = 'triangle';
+      sub.frequency.setValueAtTime(160, t0);
+      sub.frequency.exponentialRampToValueAtTime(32, t0 + 0.52);
+      flt.type = 'lowpass';
+      flt.frequency.setValueAtTime(4500, t0);
+      flt.frequency.exponentialRampToValueAtTime(350, t0 + 0.45);
+      flt.Q.value = 2.5;
+      g.gain.setValueAtTime(0.001, t0);
+      g.gain.linearRampToValueAtTime(0.28, t0 + 0.015);
+      g.gain.setValueAtTime(0.25, t0 + 0.18);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.54);
+      beam.connect(flt); sub.connect(flt);
+      flt.connect(g).connect(ctx.destination);
+      beam.start(t0); sub.start(t0);
+      beam.stop(t0 + 0.56); sub.stop(t0 + 0.56);
+      return;
+    }
+
     // Default 'blaster'
     const osc = ctx.createOscillator();
     const sub = ctx.createOscillator();
@@ -535,6 +618,111 @@ class SoundEngine {
     osc.connect(gain).connect(ctx.destination);
     osc.start(now);
     osc.stop(now + 0.6);
+  }
+
+  // ---------- Procedural Lo-Fi Chill Background Music (BGM) ----------
+  startBgm() {
+    if (this.muted || this.bgmActive) return;
+    const ctx = this.init();
+    if (!ctx) return;
+    this.bgmActive = true;
+    this.bgmStep = 0;
+
+    // Master BGM gain node with smooth fade-in
+    this.bgmMaster = ctx.createGain();
+    this.bgmMaster.gain.setValueAtTime(0.001, ctx.currentTime);
+    this.bgmMaster.gain.linearRampToValueAtTime(0.07, ctx.currentTime + 1.2);
+
+    this.bgmFilter = ctx.createBiquadFilter();
+    this.bgmFilter.type = 'lowpass';
+    this.bgmFilter.frequency.value = 1100;
+    this.bgmFilter.Q.value = 1.2;
+    this.bgmFilter.connect(this.bgmMaster);
+    this.bgmMaster.connect(ctx.destination);
+
+    // 4 Warm Lo-Fi Chords: Cmaj7 -> Am9 -> Fmaj7 -> Gsus4
+    const chords = [
+      [261.63, 329.63, 392.00, 493.88], // Cmaj7
+      [220.00, 261.63, 329.63, 440.00], // Am9
+      [174.61, 220.00, 261.63, 329.63], // Fmaj7
+      [196.00, 246.94, 293.66, 392.00], // G
+    ];
+
+    const melodyNotes = [
+      [523.25, 587.33, 659.25],
+      [440.00, 523.25, 659.25],
+      [349.23, 440.00, 523.25],
+      [392.00, 493.88, 587.33],
+    ];
+
+    const playBar = () => {
+      if (!this.bgmActive || !this.ctx) return;
+      const t = this.ctx.currentTime;
+      const chordIdx = this.bgmStep % chords.length;
+      const chord = chords[chordIdx];
+      const melody = melodyNotes[chordIdx];
+      this.bgmStep++;
+
+      // Soft sustained pad chord
+      chord.forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = idx % 2 === 0 ? 'triangle' : 'sine';
+        osc.frequency.setValueAtTime(freq * (1 + (Math.random() - 0.5) * 0.003), t);
+        g.gain.setValueAtTime(0.001, t);
+        g.gain.linearRampToValueAtTime(0.12, t + 0.15);
+        g.gain.setValueAtTime(0.10, t + 1.2);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 1.95);
+        osc.connect(g);
+        g.connect(this.bgmFilter);
+        osc.start(t);
+        osc.stop(t + 2.0);
+      });
+
+      // Gentle melodic arpeggio / bell tones
+      [0.45, 0.95, 1.4].forEach((delay, i) => {
+        if (Math.random() > 0.15) {
+          const mTime = t + delay;
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          const note = melody[i % melody.length];
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(note, mTime);
+          g.gain.setValueAtTime(0.001, mTime);
+          g.gain.linearRampToValueAtTime(0.08, mTime + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.001, mTime + 0.55);
+          osc.connect(g);
+          g.connect(this.bgmFilter);
+          osc.start(mTime);
+          osc.stop(mTime + 0.6);
+        }
+      });
+    };
+
+    playBar();
+    this.bgmTimer = setInterval(playBar, 1900);
+  }
+
+  stopBgm() {
+    if (!this.bgmActive) return;
+    this.bgmActive = false;
+    clearInterval(this.bgmTimer);
+    this.bgmTimer = null;
+    if (this.bgmMaster && this.ctx) {
+      try {
+        const t = this.ctx.currentTime;
+        this.bgmMaster.gain.setValueAtTime(this.bgmMaster.gain.value, t);
+        this.bgmMaster.gain.linearRampToValueAtTime(0.001, t + 0.45);
+        setTimeout(() => {
+          this.bgmMaster?.disconnect();
+          this.bgmFilter?.disconnect();
+          this.bgmMaster = null;
+          this.bgmFilter = null;
+        }, 500);
+      } catch {
+        this.bgmMaster = null;
+      }
+    }
   }
 }
 

@@ -35,7 +35,7 @@ function show(id) {
     if (idx >= 0) armoryIndex = idx;
     renderArmoryShowcase(true);
   } else if (['name', 'menu', 'create', 'lobby', 'local'].includes(id)) {
-    enterMenuScene('menu');
+    enterMenuScene(id === 'lobby' ? 'lobby' : 'menu');
   }
   syncCoinsUI();
   emitPresence();
@@ -172,7 +172,7 @@ function enterMenuScene(mode = 'menu') {
   world.showMenu(mode);
   if (!myChar) rebuildMyChar();
   setCharacterWeapon(myChar, state.look.weapon);
-  if (mode === 'armory') {
+  if (mode === 'armory' || mode === 'lobby') {
     setCharacterOpacity(myChar, 0);
   } else {
     setCharacterOpacity(myChar, 1);
@@ -190,6 +190,11 @@ function clearOthers() {
   others.clear();
 }
 
+function getShowcaseTargetScale() {
+  const isPortrait = window.innerHeight > window.innerWidth;
+  return isPortrait ? 1.55 : 2.45;
+}
+
 function previewCustomShot(modeOverride = null) {
   if (state.screen === 'armory') {
     const item = ARMORY_ITEMS[armoryIndex] || ARMORY_ITEMS[0];
@@ -202,7 +207,7 @@ function previewCustomShot(modeOverride = null) {
       sound.laser(0, item.id);
       world.beam(dx * 0.5, dz * 0.5, dx * 5.8, dz * 5.8, new THREE.Color(state.look.laser), 0, item.id);
     }
-    if (showcaseMesh) showcaseMesh.scale.setScalar(3.35);
+    if (showcaseMesh) showcaseMesh.scale.setScalar(getShowcaseTargetScale() * 1.25);
     return;
   }
   if (!myChar) return;
@@ -616,18 +621,57 @@ function emitPresence() {
   });
 }
 
+const clientSessionId = store.get('client_session_id') || ('sess_' + Math.random().toString(36).slice(2, 10));
+store.set('client_session_id', clientSessionId);
+
+let reconnectGraceTimer = null;
+
 function connect() {
   socket?.disconnect();
-  socket = io(serverUrl, { transports: ['websocket', 'polling'] });
+  socket = io(serverUrl, {
+    transports: ['websocket', 'polling'],
+    auth: { sessionId: clientSessionId },
+  });
   socket.on('connect', () => {
     $('#conn').classList.add('ok');
     $('#conn').textContent = 'Connecté au serveur (' + serverUrl + ')';
+    if (reconnectGraceTimer) {
+      clearTimeout(reconnectGraceTimer);
+      reconnectGraceTimer = null;
+    }
     emitPresence();
+    const lastRoomCode = state.room?.code || store.get('current_room_code');
+    if (lastRoomCode && ['lobby', 'hud'].includes(state.screen)) {
+      socket.emit('resume', {
+        sessionId: clientSessionId,
+        roomCode: lastRoomCode,
+        name: state.name,
+        look: state.look,
+      }, (res) => {
+        if (res?.ok && res.room) {
+          state.room = res.room;
+          store.set('current_room_code', res.room.code);
+          toast('Session rétablie');
+          onRoom(res.room);
+        }
+      });
+    }
   });
   socket.on('disconnect', () => {
     $('#conn').classList.remove('ok');
-    $('#conn').textContent = 'Mode Autonome (Solo & Bots) · En ligne : régler serveur';
-    if (state.room && !state.offlineMode) { state.room = null; show('menu'); toast('Connexion perdue'); }
+    $('#conn').textContent = 'Connexion en pause… reconnexion en cours';
+    if (state.room && !state.offlineMode) {
+      if (!reconnectGraceTimer) {
+        reconnectGraceTimer = setTimeout(() => {
+          if (!socket?.connected) {
+            state.room = null;
+            store.set('current_room_code', null);
+            show('menu');
+            toast('Connexion perdue');
+          }
+        }, 55000);
+      }
+    }
   });
   socket.on('connect_error', () => {
     $('#conn').classList.remove('ok');
@@ -641,6 +685,14 @@ function connect() {
   socket.on('sync', (p) => Object.assign(state.me, p));
   socket.on('over', onOver);
 }
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    if (socket && !socket.connected) {
+      socket.connect();
+    }
+  }
+});
 
 // ---------- Screens: name ----------
 $('#btn-name-ok').onclick = () => {
@@ -790,7 +842,8 @@ function renderArmoryShowcase(rebuild3D = false) {
     showcaseYaw = -Math.PI * 0.22;
     showcaseMesh.rotation.y = showcaseYaw;
     world.setShowcaseMesh(showcaseMesh);
-    showcaseMesh.scale.setScalar(3.25);
+    const s = getShowcaseTargetScale();
+    showcaseMesh.scale.setScalar(s * 1.12);
   }
 
   // Horizontal quick-strip at the bottom
@@ -893,7 +946,7 @@ function buyGrenade() {
   sound.buy();
   triggerPurchaseCoinRain();
   if (ARMORY_ITEMS[armoryIndex]?.kind === 'grenade' && showcaseMesh) {
-    showcaseMesh.scale.setScalar(3.35);
+    showcaseMesh.scale.setScalar(getShowcaseTargetScale() * 1.25);
   }
   renderArmoryShowcase(false);
   toast(`Grenade achetée (Stock : x${state.grenades})`);
@@ -969,15 +1022,24 @@ function onRoom(room) {
   $('#btn-bot').style.display = isHost ? '' : 'none';
   $('#btn-bot').disabled = room.players.length >= 6;
   $('#lobby-wait').style.display = isHost ? 'none' : '';
+  store.set('current_room_code', room.code);
   if (room.state === 'lobby' && ['menu', 'create', 'custom', 'armory', 'name'].includes(state.screen)) show('lobby');
 }
 function escapeHtml(s) { return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 $('#btn-bot').onclick = () => { sound.ui(); netEmit('addBot'); };
 $('#btn-start').onclick = () => { sound.ui('primary'); netEmit('start'); };
-$('#btn-lobby-leave').onclick = () => { sound.ui('back'); netEmit('leave'); state.room = null; show('menu'); };
+$('#btn-lobby-leave').onclick = () => {
+  sound.ui('back');
+  netEmit('leave');
+  state.room = null;
+  store.set('current_room_code', null);
+  sound.startBgm();
+  show('menu');
+};
 $('#btn-copy').onclick = () => { sound.ui(); navigator.clipboard?.writeText(state.room?.code || ''); toast('Code copié'); };
 $('#btn-over-lobby').onclick = () => {
   sound.ui('primary');
+  sound.startBgm();
   if (local.active) local.openLobby();
   else if (state.room) show('lobby');
   else show('menu');
@@ -995,6 +1057,7 @@ function feed(html) {
 function playerById(id) { return state.room?.players.find((p) => p.id === id); }
 
 function onStart({ you, zone }) {
+  sound.stopBgm();
   state.arena = ARENAS[state.room.arena];
   state.zone = zone;
   state.combatMode = 'weapon';
@@ -1140,6 +1203,7 @@ function onOver({ winner, ranking }) {
     const myKills = myRank?.kills || 0;
     awardMatchCoins(myKills, me);
     if (winner) sound.victory();
+    sound.startBgm();
     $('#over-title').textContent = winner ? (me ? 'Victoire' : `${winner.name} gagne`) : 'Égalité';
     $('#over-kicker').textContent = 'Fin de partie';
     $('#btn-over-lobby').textContent = 'Retour au salon';
@@ -1326,7 +1390,8 @@ function loop(now) {
       showcaseYaw += dt * 0.75;
       showcaseMesh.rotation.y = showcaseYaw;
     }
-    showcaseMesh.scale.lerp(new THREE.Vector3(2.85, 2.85, 2.85), dt * 8);
+    const targetScale = getShowcaseTargetScale();
+    showcaseMesh.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), dt * 8);
     const spinGem = showcaseMesh.userData.weaponMesh?.userData?.spinGem;
     if (spinGem) spinGem.rotation.x += dt * 3;
   }
@@ -1418,5 +1483,13 @@ if (splash) {
   splash.addEventListener('pointerdown', dismissSplash);
   setTimeout(() => splash.classList.add('hide'), 2100);
 }
+
+const unlockAudioAndBgm = () => {
+  sound.startBgm();
+  removeEventListener('pointerdown', unlockAudioAndBgm);
+  removeEventListener('keydown', unlockAudioAndBgm);
+};
+addEventListener('pointerdown', unlockAudioAndBgm);
+addEventListener('keydown', unlockAudioAndBgm);
 
 requestAnimationFrame(loop);

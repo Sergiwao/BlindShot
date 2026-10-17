@@ -13,8 +13,8 @@
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <script type="module" crossorigin src="./assets/index-Dm7ZEWod.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-C6_RqIMc.css">
+  <script type="module" crossorigin src="./assets/index-jMTfkF9G.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-DoyhZ9XD.css">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -173,8 +173,10 @@
         <div class="code-box">Code <b id="lobby-code">----</b></div>
         <button class="chip small-text" id="btn-copy" aria-label="Copier">Copier</button>
       </header>
-      <div class="lobby-arena panel" id="lobby-arena"></div>
-      <ul class="players" id="lobby-players"></ul>
+      <div class="lobby-card panel">
+        <div class="lobby-arena" id="lobby-arena"></div>
+        <ul class="players" id="lobby-players"></ul>
+      </div>
       <div class="lobby-actions">
         <button class="btn" id="btn-bot">Ajouter un bot</button>
         <button class="btn primary big" id="btn-start">Lancer la partie</button>
@@ -225,7 +227,10 @@
       <div class="hud-top">
         <div class="hud-round" id="lhud-turn">Tour 1</div>
         <div class="hud-timer" id="lhud-timer"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="track"/><circle cx="50" cy="50" r="44" class="bar" id="ltimer-bar"/></svg><span id="ltimer-num">5</span></div>
-        <div class="hud-alive" id="lhud-shooter">—</div>
+        <div class="hud-alive-row">
+          <div class="hud-alive" id="lhud-shooter">—</div>
+          <button class="chip pause-chip" id="btn-local-pause" title="Pause (Échap / Start)" aria-label="Pause">&#10074;&#10074;</button>
+        </div>
       </div>
       <div class="banner" id="lbanner"></div>
       <div class="feed" id="lfeed"></div>
@@ -236,6 +241,17 @@
       </button>
       <div class="local-roster" id="local-roster"></div>
     </section>
+
+    <!-- LOCAL PAUSE MODAL -->
+    <dialog id="dlg-local-pause" class="panel pause-modal">
+      <h3>Partie en pause</h3>
+      <p class="muted">Prends ton temps ou redémarre la manche</p>
+      <div class="pause-actions">
+        <button class="btn primary big" id="btn-pause-resume">Reprendre</button>
+        <button class="btn dark big" id="btn-pause-restart">Recommencer la manche</button>
+        <button class="btn ghost big" id="btn-pause-quit">Quitter vers le menu</button>
+      </div>
+    </dialog>
 
     <!-- GAME OVER -->
     <section class="screen" id="screen-over">

@@ -14,6 +14,7 @@ const PORT = process.env.PORT || 2567;
 
 const rooms = new Map();
 const sessions = new Map(); // socket.id -> { id, name, weapon, screen, connectedAt, ip }
+const pendingDisconnects = new Map(); // sessionId -> { timer, roomCode, playerId, isHost }
 
 const BOT_NAMES = ['Zappy', 'Bzzt', 'Pixel', 'Nova', 'Kiwi', 'Bolt', 'Rico', 'Mochi'];
 const COLORS = ['#e8603c', '#3d7fd9', '#e6b52e', '#4fa36b', '#8a5cc7', '#2fa6a0'];
@@ -550,6 +551,11 @@ function leave(socket) {
   const code = socket.data.room;
   const s = sessions.get(socket.id);
   if (s) s.roomCode = null;
+  const sessId = socket.data.sessionId || socket.id;
+  if (pendingDisconnects.has(sessId)) {
+    clearTimeout(pendingDisconnects.get(sessId).timer);
+    pendingDisconnects.delete(sessId);
+  }
   if (!code) return;
   const room = rooms.get(code);
   socket.leave(code);
@@ -579,8 +585,12 @@ io.on('connection', (socket) => {
     return;
   }
 
+  const sessId = socket.handshake.auth?.sessionId || socket.handshake.query?.sessionId || socket.id;
+  socket.data.sessionId = sessId;
+
   sessions.set(socket.id, {
     id: socket.id,
+    sessionId: sessId,
     name: 'Joueur',
     weapon: 'blaster',
     screen: 'menu',
@@ -588,6 +598,63 @@ io.on('connection', (socket) => {
     connectedAt: Date.now(),
   });
   broadcastAdmin('Connexion joueur');
+
+  socket.on('resume', ({ sessionId, roomCode, name, look } = {}, cb) => {
+    const sId = sessionId || socket.handshake.auth?.sessionId || socket.data.sessionId;
+    socket.data.sessionId = sId;
+    const pending = sId ? pendingDisconnects.get(sId) : null;
+    const code = roomCode || pending?.roomCode;
+    const room = code ? rooms.get(code) : null;
+
+    if (!room) {
+      if (pending) {
+        clearTimeout(pending.timer);
+        pendingDisconnects.delete(sId);
+      }
+      return cb?.({ ok: false, error: 'Salon indisponible ou fermé' });
+    }
+
+    if (pending) {
+      clearTimeout(pending.timer);
+      pendingDisconnects.delete(sId);
+    }
+
+    let existing = null;
+    let oldId = null;
+    for (const [id, pl] of room.players.entries()) {
+      if (pl.sessionId === sId || id === pending?.playerId || (pl.name === name && pl.disconnected)) {
+        existing = pl;
+        oldId = id;
+        break;
+      }
+    }
+
+    if (existing) {
+      room.players.delete(oldId);
+      existing.id = socket.id;
+      existing.disconnected = false;
+      if (pending?.isHost || room.host === oldId) room.host = socket.id;
+      room.players.set(socket.id, existing);
+    } else if (room.players.size < MAX_PLAYERS) {
+      const clean = String(name || 'Joueur').replace(/[<>]/g, '').slice(0, 14) || 'Joueur';
+      const cleanLook = sanitizeLook(look);
+      room.players.set(socket.id, {
+        id: socket.id, sessionId: sId, name: clean, look: cleanLook, bot: false,
+        alive: true, kills: 0, x: 0, z: 0, angle: 0, mode: 'weapon', lastT: Date.now(),
+      });
+    }
+
+    socket.join(room.code);
+    socket.data.room = room.code;
+    const s = sessions.get(socket.id);
+    if (s) {
+      s.name = existing ? existing.name : (name || 'Joueur');
+      s.roomCode = room.code;
+    }
+
+    broadcastRoom(room);
+    cb?.({ ok: true, code: room.code, room: roomInfo(room) });
+  });
 
   socket.on('presence', ({ name, weapon, screen } = {}) => {
     const s = sessions.get(socket.id);
@@ -688,19 +755,57 @@ io.on('connection', (socket) => {
 
   socket.on('leave', () => leave(socket));
   socket.on('disconnect', () => {
-    leave(socket);
     const s = sessions.get(socket.id);
     const nm = s?.name || 'Joueur';
     sessions.delete(socket.id);
     broadcastAdmin(`Déconnexion (${nm})`);
+
+    const code = socket.data.room;
+    if (code) {
+      const room = rooms.get(code);
+      if (room) {
+        const p = room.players.get(socket.id);
+        const sId = socket.data.sessionId || socket.id;
+        if (p) {
+          p.disconnected = true;
+          const isHost = room.host === socket.id;
+          if (pendingDisconnects.has(sId)) {
+            clearTimeout(pendingDisconnects.get(sId).timer);
+          }
+          const timer = setTimeout(() => {
+            pendingDisconnects.delete(sId);
+            const r = rooms.get(code);
+            if (!r) return;
+            const target = r.players.get(p.id);
+            if (target && target.disconnected) {
+              r.players.delete(p.id);
+              const humans = [...r.players.values()].filter((x) => !x.bot);
+              if (!humans.length) {
+                clearTimeout(r.timer);
+                rooms.delete(code);
+                broadcastAdmin(`Salon ${code} fermé (inactivité)`);
+              } else {
+                if (r.host === p.id) r.host = humans[0].id;
+                broadcastRoom(r);
+              }
+            }
+          }, 60000);
+
+          pendingDisconnects.set(sId, { timer, roomCode: code, playerId: socket.id, isHost });
+          socket.leave(code);
+          return;
+        }
+      }
+    }
   });
 });
 
 function joinRoom(socket, room, name, look) {
   const clean = String(name || 'Joueur').replace(/[<>]/g, '').slice(0, 14) || 'Joueur';
   const cleanLook = sanitizeLook(look);
+  const sessId = socket.data.sessionId || socket.handshake.auth?.sessionId || socket.id;
   room.players.set(socket.id, {
-    id: socket.id, name: clean, look: cleanLook, bot: false,
+    id: socket.id, sessionId: sessId, name: clean, look: cleanLook, bot: false,
     alive: true, kills: 0, x: 0, z: 0, angle: 0, mode: 'weapon', lastT: Date.now(),
   });
   socket.join(room.code);
