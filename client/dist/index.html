@@ -13,8 +13,8 @@
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <script type="module" crossorigin src="./assets/index-jMTfkF9G.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-DoyhZ9XD.css">
+  <script type="module" crossorigin src="./assets/index-xSGspRkF.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-sAmddiYd.css">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -65,6 +65,11 @@
       </header>
       <div class="hello">Salut <b id="menu-name"></b> <span class="pad-badge" id="pad-status" style="display:none">Manette connectée</span></div>
       <div class="menu-bottom">
+        <div class="section-label">Multijoueur Local (Wi-Fi / Hotspot)</div>
+        <button class="btn big lan-entry-btn" id="btn-menu-lan">
+          <span class="lan-dot">📡</span>
+          <b>Multijoueur Local (Sans Internet)</b>
+        </button>
         <div class="section-label">En ligne</div>
         <button class="btn primary big" id="btn-create">Créer un salon</button>
         <div class="join-row panel">
@@ -78,6 +83,55 @@
           <button class="btn" id="btn-custom">Personnaliser</button>
         </div>
         <div class="credit-foot">Développé par <b>Serge le dev</b></div>
+      </div>
+    </section>
+
+    <!-- LOCAL MULTIPLAYER (Wi-Fi / Hotspot / Direct P2P) -->
+    <section class="screen" id="screen-lan">
+      <header class="top">
+        <button class="chip" id="btn-lan-back" aria-label="Retour">&larr;</button>
+        <h2>Multijoueur Local</h2>
+        <span class="lan-mode-tag">Hors-ligne</span>
+      </header>
+      <div class="lan-card panel">
+        <div class="lan-block">
+          <div class="lan-block-header">
+            <span class="lan-badge-step">1</span>
+            <div>
+              <h3>Créer la partie (Hôte)</h3>
+              <p class="muted">Active ton point d'accès (Hotspot) ou connecte-toi au même Wi-Fi.</p>
+            </div>
+          </div>
+          <button class="btn primary big" id="btn-lan-host">Héberger la partie</button>
+        </div>
+
+        <div class="lan-sep"><span>OU REJOINDRE</span></div>
+
+        <div class="lan-block">
+          <div class="lan-block-header">
+            <span class="lan-badge-step">2</span>
+            <div>
+              <h3>Rejoindre un(e) ami(e)</h3>
+              <p class="muted">Connecte-toi au Hotspot ou Wi-Fi de ton ami(e).</p>
+            </div>
+          </div>
+
+          <div class="lan-presets">
+            <button class="chip small-text lan-preset" id="btn-lan-pre-android">⚡ Hotspot Android</button>
+            <button class="chip small-text lan-preset" id="btn-lan-pre-iphone">🍏 Hotspot iPhone</button>
+            <button class="chip small-text lan-preset" id="btn-lan-pre-pc">💻 Ce PC</button>
+          </div>
+
+          <div class="join-row panel">
+            <input id="input-lan-ip" placeholder="192.168.43.1:2567" autocomplete="off" />
+            <button class="btn dark" id="btn-lan-join">Rejoindre</button>
+          </div>
+
+          <div class="lan-tools-row">
+            <button class="btn sm ghost" id="btn-lan-scan">🔍 Scanner le réseau local</button>
+          </div>
+          <div id="lan-scan-results" class="lan-scan-results" style="display:none"></div>
+        </div>
       </div>
     </section>
 
@@ -272,6 +326,15 @@
       <div class="row">
         <button class="btn ghost" id="btn-settings-cancel">Annuler</button>
         <button class="btn primary" id="btn-settings-ok">OK</button>
+      </div>
+    </dialog>
+
+    <!-- HOST DISCONNECTED / LOST NOTIFICATION -->
+    <dialog id="dlg-lan-host-lost" class="panel pause-modal">
+      <h3>Connexion hôte interrompue</h3>
+      <p class="muted">L'hôte a quitté la partie ou a coupé sa connexion Wi-Fi / Hotspot.</p>
+      <div class="pause-actions">
+        <button class="btn primary big" id="btn-lan-host-lost-ok">Retour au menu</button>
       </div>
     </dialog>
   </main>

@@ -1,13 +1,31 @@
-import * as THREE from 'three';
-
-// ---------- Low-poly helpers ----------
+// ---------- Stylized Low-Poly PBR Material Helpers ----------
 function rng(seed) {
   let s = seed >>> 0 || 1;
   return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
 }
 
+function matStone(color, opts = {}) {
+  return new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.88, metalness: 0.05, ...opts });
+}
+
+function matWood(color, opts = {}) {
+  return new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.68, metalness: 0.02, ...opts });
+}
+
+function matMetal(color, opts = {}) {
+  return new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.32, metalness: 0.78, ...opts });
+}
+
+function matFoliage(color, opts = {}) {
+  return new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.86, metalness: 0.0, ...opts });
+}
+
+function matGlow(color) {
+  return new THREE.MeshBasicMaterial({ color });
+}
+
 function flat(color, opts = {}) {
-  return new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.9, metalness: 0, ...opts });
+  return matStone(color, opts);
 }
 
 function jitter(geo, amount, rand, keepBottom = false) {
@@ -24,41 +42,65 @@ function jitter(geo, amount, rand, keepBottom = false) {
   return geo;
 }
 
+/** Stylized low-poly trees with natural multi-layered branch canopies */
 function makeTree(rand, scale = 1, style = 'pine') {
   const g = new THREE.Group();
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 0.9, 5), flat(0x7a5638));
-  trunk.position.y = 0.45;
-  trunk.castShadow = true;
+  const woodCol = 0x664932;
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.22, 1.1, 5), matWood(woodCol));
+  trunk.position.y = 0.55;
+  trunk.castShadow = true; trunk.receiveShadow = true;
   g.add(trunk);
 
   if (style === 'cypress') {
-    const col = [0x356859, 0x2f5d4e, 0x437a68][Math.floor(rand() * 3)];
-    const body = new THREE.Mesh(jitter(new THREE.ConeGeometry(0.52, 2.6, 6), 0.08, rand), flat(col));
-    body.position.y = 1.8;
-    body.castShadow = true;
+    const greens = [0x2f5e4b, 0x3a6e58, 0x244f3e];
+    const col = greens[Math.floor(rand() * greens.length)];
+    const body = new THREE.Mesh(jitter(new THREE.ConeGeometry(0.55, 2.8, 6), 0.10, rand), matFoliage(col));
+    body.position.y = 1.95; body.castShadow = true;
     g.add(body);
   } else if (style === 'cactus') {
     g.remove(trunk);
-    const col = 0x5c8a47;
-    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 1.9, 6), flat(col));
-    stem.position.y = 0.95; stem.castShadow = true;
+    const col = 0x568342;
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 2.0, 6), matFoliage(col));
+    stem.position.y = 1.0; stem.castShadow = true;
     g.add(stem);
     for (const s of [-1, 1]) {
-      if (rand() > 0.25) {
-        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.13, 0.7, 5), flat(col));
-        arm.position.set(s * 0.28, 1.1 + rand() * 0.25, 0);
-        arm.rotation.z = -s * 0.45;
-        arm.castShadow = true;
-        g.add(arm);
+      if (rand() > 0.20) {
+        const armH = 0.8 + rand() * 0.3;
+        const armJoint = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.12, 0.45, 5), matFoliage(col));
+        armJoint.position.set(s * 0.28, 1.1 + rand() * 0.25, 0);
+        armJoint.rotation.z = -s * (Math.PI / 2); armJoint.castShadow = true;
+        const armUp = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.11, armH, 5), matFoliage(col));
+        armUp.position.set(s * 0.50, 1.1 + armH * 0.5, 0); armUp.castShadow = true;
+        g.add(armJoint, armUp);
       }
     }
+  } else if (style === 'oak') {
+    // Broadleaf deciduous oak with cloud-like clustered foliage
+    const foliageCols = [0x5f8f4a, 0x6fa054, 0x52823e, 0x7aa552];
+    const col = foliageCols[Math.floor(rand() * foliageCols.length)];
+    const foliageG = new THREE.Group();
+    const clusters = [
+      { x: 0, y: 1.6, z: 0, s: 0.95 },
+      { x: 0.35, y: 1.4, z: 0.2, s: 0.72 },
+      { x: -0.32, y: 1.35, z: -0.22, s: 0.70 },
+      { x: 0.1, y: 1.85, z: -0.15, s: 0.65 },
+    ];
+    for (const cl of clusters) {
+      const clump = new THREE.Mesh(new THREE.DodecahedronGeometry(cl.s, 0), matFoliage(col));
+      clump.position.set(cl.x, cl.y, cl.z); clump.rotation.set(rand() * 2, rand() * 2, rand() * 2);
+      clump.castShadow = true; foliageG.add(clump);
+    }
+    g.add(foliageG);
   } else {
-    const greens = [0x5f8f4e, 0x6f9d55, 0x4f7f45, 0x7aa35a];
+    // Layered alpine low-poly pine
+    const greens = [0x4d7a42, 0x5a8a4d, 0x3e6b36, 0x689a54];
     const col = greens[Math.floor(rand() * greens.length)];
-    const layers = rand() > 0.5 ? 3 : 2;
+    const layers = rand() > 0.4 ? 4 : 3;
     for (let i = 0; i < layers; i++) {
-      const c = new THREE.Mesh(jitter(new THREE.ConeGeometry(0.8 - i * 0.18, 1.1, 6), 0.12, rand), flat(col));
-      c.position.y = 1.1 + i * 0.55; c.rotation.y = rand() * 3;
+      const r = 0.92 - i * 0.17;
+      const h = 1.15;
+      const c = new THREE.Mesh(jitter(new THREE.ConeGeometry(r, h, 6), 0.10, rand), matFoliage(col));
+      c.position.y = 1.05 + i * 0.58; c.rotation.y = rand() * 3;
       c.castShadow = true;
       g.add(c);
     }
@@ -67,12 +109,59 @@ function makeTree(rand, scale = 1, style = 'pine') {
   return g;
 }
 
+/** Chiseled multi-faceted low-poly boulder with flat resting base */
 function makeRock(rand, color, scale = 1) {
-  const m = new THREE.Mesh(jitter(new THREE.DodecahedronGeometry(0.6, 0), 0.35, rand), flat(color));
-  m.scale.set(scale * (0.8 + rand() * 0.6), scale * (0.5 + rand() * 0.5), scale * (0.8 + rand() * 0.6));
-  m.rotation.y = rand() * 6;
-  m.castShadow = m.receiveShadow = true;
-  return m;
+  const rock = new THREE.Mesh(jitter(new THREE.DodecahedronGeometry(0.65, 0), 0.32, rand), matStone(color));
+  rock.scale.set(scale * (0.85 + rand() * 0.5), scale * (0.55 + rand() * 0.45), scale * (0.85 + rand() * 0.5));
+  rock.rotation.set(rand() * 0.3, rand() * 6, rand() * 0.3);
+  rock.castShadow = true; rock.receiveShadow = true;
+  return rock;
+}
+
+/** Low-poly wooden post with warm ambient iron lantern */
+function makeLantern(postColor = 0x5a3e2b, glowColor = 0xffbf47) {
+  const g = new THREE.Group();
+  // Carved wooden post
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.10, 1.6, 5), matWood(postColor));
+  post.position.y = 0.8; post.castShadow = true;
+  // Iron bracket
+  const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.18, 0.18), matMetal(0x282a30));
+  bracket.position.set(0, 1.45, 0.12);
+  // Lantern frame
+  const frame = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.08, 0.22, 5), matMetal(0x222428));
+  frame.position.set(0, 1.35, 0.22); frame.castShadow = true;
+  // Emissive glowing core
+  const core = new THREE.Mesh(new THREE.DodecahedronGeometry(0.07, 0), matGlow(glowColor));
+  core.position.set(0, 1.35, 0.22);
+  g.add(post, bracket, frame, core);
+  return g;
+}
+
+/** Tactical supply crate with metal corner reinforcements */
+function makeCrate(color = 0x6e523b, scale = 1) {
+  const g = new THREE.Group();
+  const box = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.75, 0.75), matWood(color));
+  box.castShadow = box.receiveShadow = true;
+  // Cross braces
+  const brace1 = new THREE.Mesh(new THREE.BoxGeometry(0.77, 0.08, 0.77), matMetal(0x353840));
+  const brace2 = new THREE.Mesh(new THREE.BoxGeometry(0.77, 0.77, 0.08), matMetal(0x353840));
+  g.add(box, brace1, brace2);
+  g.scale.setScalar(scale);
+  return g;
+}
+
+/** Wooden banded barrel */
+function makeBarrel(color = 0x72543d, scale = 1) {
+  const g = new THREE.Group();
+  const stave = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.85, 7), matWood(color));
+  stave.scale.set(1.15, 1, 1.15); stave.castShadow = stave.receiveShadow = true;
+  for (const y of [-0.28, 0.28]) {
+    const hoop = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.06, 7), matMetal(0x2b2e35));
+    hoop.position.y = y; g.add(hoop);
+  }
+  g.add(stave);
+  g.scale.setScalar(scale);
+  return g;
 }
 
 export class World {
@@ -145,7 +234,9 @@ export class World {
     cliff.rotation.x = Math.PI; cliff.position.y = -1.6; cliff.castShadow = true;
     const plinth = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 1.05, 0.22, 6), flat(0xe6cfa3));
     plinth.position.y = 0.0; plinth.scale.y = 0.5; plinth.receiveShadow = true; plinth.castShadow = true;
-    g.add(top, cliff, plinth);
+    const lantern = makeLantern(0x6e523b, 0xffbe42);
+    lantern.position.set(-1.8, 0, 0.8); lantern.rotation.y = 0.4;
+    g.add(top, cliff, plinth, lantern);
     const t1 = makeTree(rand, 0.8); t1.position.set(-1.4, 0, -1.2); g.add(t1);
     const t2 = makeTree(rand, 0.6); t2.position.set(-0.4, 0, -1.9); g.add(t2);
     const r1 = makeRock(rand, 0x9c8a78, 0.6); r1.position.set(1.5, 0.1, -1.1); g.add(r1);
@@ -276,11 +367,15 @@ export class World {
         this.arenaGroup.add(b);
       }
       for (const [x, z] of [[S, S], [S, -S], [-S, S], [-S, -S]]) {
-        const p = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.42, 1.3, 6), flat(th.rock));
+        const p = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.44, 1.3, 6), matStone(th.rock));
         p.position.set(x, 0.6, z); p.castShadow = true;
-        const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.18, 6), flat(th.line));
+        const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.18, 6), matStone(th.line));
         cap.position.y = 0.72; cap.castShadow = true; p.add(cap);
-        this.arenaGroup.add(p);
+
+        // Warm ambient low-poly lantern on corner pillar
+        const lantern = makeLantern(th.line, 0xffc44d);
+        lantern.position.set(x, 1.32, z);
+        this.arenaGroup.add(p, lantern);
       }
     }
 
@@ -290,27 +385,50 @@ export class World {
       if (arena.id === 'sanctuary') {
         const isCenter = Math.hypot(o.x, o.z) < 1;
         if (isCenter) {
-          // Stepped central sanctuary altar
-          const b1 = new THREE.Mesh(new THREE.BoxGeometry(o.w, 0.5, o.d), flat(th.rock));
-          b1.position.y = 0.25; b1.castShadow = b1.receiveShadow = true;
-          const b2 = new THREE.Mesh(new THREE.BoxGeometry(o.w * 0.72, 0.9, o.d * 0.72), flat(0xf6f2e9));
-          b2.position.y = 0.95; b2.castShadow = b2.receiveShadow = true;
-          const obelisk = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.1, 4), flat(th.line));
-          obelisk.position.y = 1.95; obelisk.rotation.y = Math.PI / 4; obelisk.castShadow = true;
-          wall.add(b1, b2, obelisk);
+          // Stepped central sanctuary altar with floating glowing crystal
+          const b1 = new THREE.Mesh(new THREE.BoxGeometry(o.w, 0.45, o.d), matStone(th.rock));
+          b1.position.y = 0.22; b1.castShadow = b1.receiveShadow = true;
+          const b2 = new THREE.Mesh(new THREE.BoxGeometry(o.w * 0.75, 0.85, o.d * 0.75), matStone(0xf6f2e9));
+          b2.position.y = 0.85; b2.castShadow = b2.receiveShadow = true;
+          const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.45, 0), matGlow(0x42e0ff));
+          crystal.position.y = 1.85;
+          wall.add(b1, b2, crystal);
         } else {
-          // Classical octagonal low-poly column
-          const r = o.w * 0.48;
-          const plinth = new THREE.Mesh(new THREE.BoxGeometry(o.w, 0.26, o.d), flat(th.rock));
-          plinth.position.y = 0.13; plinth.castShadow = plinth.receiveShadow = true;
-          const shaft = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.86, r, 1.8, 8), flat(0xf6f2e9));
-          shaft.position.y = 1.15; shaft.castShadow = shaft.receiveShadow = true;
-          const cap = new THREE.Mesh(new THREE.BoxGeometry(o.w * 1.04, 0.24, o.d * 1.04), flat(th.line));
-          cap.position.y = 2.12; cap.castShadow = true;
+          // Classical octagonal low-poly fluted column
+          const r = o.w * 0.46;
+          const plinth = new THREE.Mesh(new THREE.BoxGeometry(o.w, 0.28, o.d), matStone(th.rock));
+          plinth.position.y = 0.14; plinth.castShadow = plinth.receiveShadow = true;
+          const shaft = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.88, r, 1.8, 8), matStone(0xf4f0e6));
+          shaft.position.y = 1.18; shaft.castShadow = shaft.receiveShadow = true;
+          const cap = new THREE.Mesh(new THREE.BoxGeometry(o.w * 1.05, 0.22, o.d * 1.05), matStone(th.line));
+          cap.position.y = 2.14; cap.castShadow = true;
           wall.add(plinth, shaft, cap);
         }
+      } else if (arena.id === 'bastion') {
+        // Military tactical battlements: wood barricades, metal plates, supply crates & barrels
+        const long = o.w >= o.d;
+        const mainBarricade = new THREE.Mesh(new THREE.BoxGeometry(o.w, 1.6, o.d), matWood(0x6e4e38));
+        mainBarricade.position.y = 0.8; mainBarricade.castShadow = mainBarricade.receiveShadow = true;
+        // Metal reinforced armor band
+        const metalBand = new THREE.Mesh(new THREE.BoxGeometry(long ? o.w + 0.05 : o.w - 0.02, 0.18, long ? o.d - 0.02 : o.d + 0.05), matMetal(0x353842));
+        metalBand.position.y = 0.95;
+        // Side crate / barrel decor
+        if (Math.max(o.w, o.d) > 2) {
+          const crate = makeCrate(0x5a3e2b, 0.65);
+          crate.position.set(long ? (o.w * 0.28) : 0, 0.26, long ? 0 : (o.d * 0.28));
+          wall.add(crate);
+        }
+        wall.add(mainBarricade, metalBand);
+      } else if (arena.id === 'forest') {
+        // Ancient mossy monoliths and chiseled stone dolmens
+        const rock = makeRock(rand, th.rock, Math.max(o.w, o.d) * 0.75);
+        rock.scale.set(o.w * 0.85, 1.6, o.d * 0.85);
+        rock.position.y = 0.8;
+        const mossCap = new THREE.Mesh(jitter(new THREE.BoxGeometry(o.w * 0.88, 0.2, o.d * 0.88, 3, 1, 3), 0.08, rand), matFoliage(0x4d7c3b));
+        mossCap.position.y = 1.65; mossCap.castShadow = true;
+        wall.add(rock, mossCap);
       } else {
-        // Layered stone/mesa blocks
+        // Layered stone / mesa masonry blocks with natural mortar
         const rows = 3, h = 1.8 / rows;
         for (let r = 0; r < rows; r++) {
           const long = o.w >= o.d;
@@ -320,18 +438,18 @@ export class World {
           for (let k = -off; k < count; k++) {
             const a = Math.max(0, k), b = Math.min(count, k + 1);
             if (b - a < 0.2) continue;
-            const len = ((b - a) / count) * L - 0.05;
+            const len = ((b - a) / count) * L - 0.04;
             const center = -L / 2 + ((a + b) / 2 / count) * L;
             const geo = new THREE.BoxGeometry(long ? len : o.w - 0.02, h - 0.04, long ? o.d - 0.02 : len);
             const c = new THREE.Color(th.rock).offsetHSL(0, 0, (rand() - 0.5) * 0.08);
-            const brick = new THREE.Mesh(geo, flat(c));
+            const brick = new THREE.Mesh(geo, matStone(c));
             brick.position.set(long ? center : 0, h * (r + 0.5), long ? 0 : center);
             brick.castShadow = brick.receiveShadow = true;
             wall.add(brick);
           }
         }
         const capColor = arena.id === 'bastion' ? th.line : th.accent;
-        const moss = new THREE.Mesh(jitter(new THREE.BoxGeometry(o.w + 0.1, 0.16, o.d + 0.1, 3, 1, 3), 0.08, rand), flat(capColor));
+        const moss = new THREE.Mesh(jitter(new THREE.BoxGeometry(o.w + 0.08, 0.16, o.d + 0.08, 3, 1, 3), 0.08, rand), matFoliage(capColor));
         moss.position.y = 1.86; moss.castShadow = true;
         wall.add(moss);
       }
@@ -341,22 +459,35 @@ export class World {
 
     // Decor around the arena matching theme
     const decorR = S + 3;
-    const nDecor = Math.round(S * 3.2);
-    const treeStyle = arena.id === 'sanctuary' ? 'cypress' : arena.id === 'bastion' ? 'cactus' : 'pine';
+    const nDecor = Math.round(S * 3.5);
     for (let i = 0; i < nDecor; i++) {
       const a = rand() * Math.PI * 2;
       const r = decorR + rand() * 16;
       const x = Math.cos(a) * r, z = Math.sin(a) * r;
       const y = -1.6 + Math.min(Math.max(0, r - S - 6) * 0.06, 4);
-      const obj = rand() > 0.35 ? makeTree(rand, 0.9 + rand() * 0.9, treeStyle) : makeRock(rand, th.rock, 0.8 + rand() * 1.4);
+      let treeStyle = 'pine';
+      if (arena.id === 'sanctuary') treeStyle = 'cypress';
+      else if (arena.id === 'bastion') treeStyle = 'cactus';
+      else if (arena.id === 'forest') treeStyle = rand() > 0.45 ? 'oak' : 'pine';
+      else if (arena.id === 'dune') treeStyle = rand() > 0.6 ? 'cactus' : 'pine';
+
+      const obj = rand() > 0.35 ? makeTree(rand, 0.85 + rand() * 0.9, treeStyle) : makeRock(rand, th.rock, 0.75 + rand() * 1.3);
       obj.position.set(x, y, z);
       this.arenaGroup.add(obj);
     }
-    for (let i = 0; i < 18; i++) {
-      const a = rand() * Math.PI * 2, r = S + 1.3 + rand() * 2;
-      const rock = makeRock(rand, th.rock, 0.25 + rand() * 0.3);
-      rock.position.set(Math.cos(a) * r, -1.5, Math.sin(a) * r);
+    for (let i = 0; i < 20; i++) {
+      const a = rand() * Math.PI * 2, r = S + 1.2 + rand() * 2.2;
+      const rock = makeRock(rand, th.rock, 0.25 + rand() * 0.35);
+      rock.position.set(Math.cos(a) * r, -1.45, Math.sin(a) * r);
       this.arenaGroup.add(rock);
+    }
+    // Wild grass & vegetation clusters along arena periphery
+    for (let i = 0; i < 26; i++) {
+      const a = rand() * Math.PI * 2, r = S + 0.6 + rand() * 3.5;
+      const grass = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.45, 4), matFoliage(th.accent));
+      grass.position.set(Math.cos(a) * r, -0.25, Math.sin(a) * r);
+      grass.rotation.set((rand() - 0.5) * 0.35, rand() * 3, (rand() - 0.5) * 0.35);
+      this.arenaGroup.add(grass);
     }
 
     // Shrinking zone visuals

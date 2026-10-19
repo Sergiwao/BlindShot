@@ -40,39 +40,73 @@ function mat(color, opts = {}) {
   return new THREE.MeshStandardMaterial({ color, roughness: 0.75, metalness: 0, flatShading: true, transparent: true, ...opts });
 }
 
-function buildHat(type, accent) {
+/** Builds a stylized low-poly hat or head accessory */
+function buildHat(type, accentColor, darkColor) {
   const g = new THREE.Group();
   if (type === 'cap') {
-    const top = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), mat(accent));
-    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.05, 8, 1, false, -Math.PI / 2, Math.PI), mat(accent));
-    brim.position.set(0.25, 0.02, 0); brim.scale.set(1.2, 1, 1);
-    g.add(top, brim); g.position.y = 0.12;
+    // Stylized baseball cap with curved visor and top button
+    const capMat = mat(accentColor, { roughness: 0.7 });
+    const crown = new THREE.Mesh(new THREE.SphereGeometry(0.33, 7, 5, 0, Math.PI * 2, 0, Math.PI * 0.58), capMat);
+    crown.scale.set(1.05, 0.85, 1.05); crown.position.y = 0.16;
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.03, 0.28), capMat);
+    visor.position.set(0.24, 0.17, 0); visor.rotation.z = -0.12;
+    const button = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.03, 5), mat(darkColor));
+    button.position.y = 0.38;
+    g.add(crown, visor, button);
+    g.position.y = 0.22;
   } else if (type === 'crown') {
-    const m = mat('#d9a93a', { roughness: 0.4, metalness: 0.5 });
-    m.side = THREE.DoubleSide;
-    const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.16, 6, 1, true), m);
-    g.add(ring);
-    for (let i = 0; i < 6; i++) {
-      const s = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.18, 4), m);
-      const a = (i / 6) * Math.PI * 2;
-      s.position.set(Math.cos(a) * 0.28, 0.16, Math.sin(a) * 0.28);
-      g.add(s);
+    // Regal chiseled golden crown with faceted points & ruby studs
+    const goldMat = mat('#f0be3d', { roughness: 0.28, metalness: 0.8 });
+    const rubyMat = mat('#d9384a', { roughness: 0.2, metalness: 0.3 });
+    const baseRing = new THREE.Mesh(new THREE.CylinderGeometry(0.30, 0.28, 0.14, 8, 1, true), goldMat);
+    baseRing.position.y = 0.07;
+    g.add(baseRing);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const x = Math.cos(a) * 0.29, z = Math.sin(a) * 0.29;
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.065, 0.18, 4), goldMat);
+      spike.position.set(x, 0.20, z);
+      g.add(spike);
+      if (i % 2 === 0) {
+        const ruby = new THREE.Mesh(new THREE.OctahedronGeometry(0.035, 0), rubyMat);
+        ruby.position.set(x * 1.05, 0.08, z * 1.05);
+        g.add(ruby);
+      }
     }
-    g.position.y = 0.38;
+    g.position.y = 0.36;
   } else if (type === 'cone') {
-    const c = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.55, 6), mat('#d94a5a'));
-    const pom = new THREE.Mesh(new THREE.IcosahedronGeometry(0.08, 0), mat('#f1ebe0'));
-    pom.position.y = 0.3; c.add(pom); c.rotation.z = -0.2;
-    g.add(c); g.position.y = 0.55;
+    // Festive party cone with spiral band and pom-pom
+    const coneMat = mat('#e84d5d', { roughness: 0.65 });
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.20, 0.52, 7), coneMat);
+    cone.rotation.z = -0.15; cone.position.y = 0.26;
+    const pom = new THREE.Mesh(new THREE.DodecahedronGeometry(0.075, 0), mat('#fbf7f0', { roughness: 0.9 }));
+    pom.position.set(-0.06, 0.52, 0);
+    g.add(cone, pom);
+    g.position.y = 0.35;
   } else if (type === 'halo') {
-    const h = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.045, 4, 10), mat('#e6c25a', { roughness: 0.4, metalness: 0.4 }));
-    h.rotation.x = Math.PI / 2; g.add(h); g.position.y = 0.6; g.userData.spin = h;
+    // Floating luminescent golden halo
+    const haloMat = mat('#ffd84d', { roughness: 0.25, metalness: 0.6 });
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.038, 5, 12), haloMat);
+    ring.rotation.x = Math.PI / 2;
+    g.add(ring);
+    g.position.y = 0.62;
+    g.userData.spin = ring;
   } else if (type === 'horns') {
+    // Stylized curved dragon/demon horns with chiseled facets
+    const hornMat = mat('#eee4d4', { roughness: 0.6 });
     for (const s of [-1, 1]) {
-      const h = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.32, 5), mat('#efe6d6'));
-      h.position.set(0, 0.32, s * 0.2); h.rotation.x = s * 0.5;
-      g.add(h);
+      const hornGroup = new THREE.Group();
+      const seg1 = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.26, 5), hornMat);
+      seg1.position.y = 0.13;
+      const seg2 = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.22, 5), hornMat);
+      seg2.position.set(0.04, 0.28, 0); seg2.rotation.z = -0.35;
+      hornGroup.add(seg1, seg2);
+      hornGroup.position.set(-0.05, 0.28, s * 0.24);
+      hornGroup.rotation.x = s * 0.45;
+      hornGroup.rotation.y = -s * 0.2;
+      g.add(hornGroup);
     }
+    g.position.y = 0.24;
   }
   return g;
 }
@@ -80,7 +114,7 @@ function buildHat(type, accent) {
 /** Builds the 3D weapon or grenade mesh held by the character */
 export function buildWeaponMesh(weaponId, laserColor, bodyMat) {
   const g = new THREE.Group();
-  const hand = new THREE.Mesh(new THREE.IcosahedronGeometry(0.11, 0), bodyMat);
+  const hand = new THREE.Mesh(new THREE.DodecahedronGeometry(0.10, 0), bodyMat);
   g.add(hand);
 
   if (weaponId === 'grenade') {
@@ -191,7 +225,6 @@ export function buildWeaponMesh(weaponId, laserColor, bodyMat) {
     handle.rotation.z = Math.PI / 2; handle.position.x = 0.16;
     const cross = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.32, 0.08), goldMat);
     cross.position.x = 0.34;
-    // 3 prongs
     for (const offset of [-0.13, 0, 0.13]) {
       const prong = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.28, 5), goldMat);
       prong.rotation.z = -Math.PI / 2; prong.position.set(0.48, offset, 0);
@@ -229,55 +262,153 @@ export function buildWeaponMesh(weaponId, laserColor, bodyMat) {
   return g;
 }
 
-/** Creates a stylized low-poly character. Faces +X. */
+/**
+ * Creates a stylized, realistic low-poly character with natural human proportions,
+ * tailored jacket, utility belt, articulated arms/hands, and sturdy explorer boots.
+ * Faces +X direction.
+ */
 export function createCharacter(look) {
   const root = new THREE.Group();
   const model = new THREE.Group();
   root.add(model);
-  const body = mat(look.body);
-  const dark = mat(new THREE.Color(look.body).multiplyScalar(0.6));
 
-  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 0.45, 2, 8), body);
-  torso.position.y = 0.75; torso.castShadow = true;
-  const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.44, 0.1, 8), dark);
-  belt.position.y = 0.6;
+  // Stylized color palette & materials
+  const skinMat = mat('#f2cca6', { roughness: 0.75, metalness: 0 });
+  const bodyColor = new THREE.Color(look.body);
+  const darkColor = bodyColor.clone().multiplyScalar(0.55);
+  const darkerTone = bodyColor.clone().multiplyScalar(0.35);
 
-  const headG = new THREE.Group(); headG.position.y = 1.5;
-  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42, 1), body);
-  head.castShadow = true;
-  const face = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5), new THREE.MeshBasicMaterial({ map: faceTexture(look.face), transparent: true }));
-  face.position.x = 0.4; face.rotation.y = Math.PI / 2;
-  headG.add(head, face, buildHat(look.hat, dark.color.getStyle()));
+  const jacketMat = mat(bodyColor, { roughness: 0.72 });
+  const pantsMat = mat(darkColor, { roughness: 0.82 });
+  const leatherMat = mat('#2a2320', { roughness: 0.55, metalness: 0.1 });
+  const metalMat = mat('#d9a93a', { roughness: 0.35, metalness: 0.7 });
 
-  const feet = [];
+  // 1. Torso: Tailored jacket with tapered waist and collar lapels
+  const torsoG = new THREE.Group();
+  torsoG.position.y = 0.88;
+
+  // Chest / Jacket
+  const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.25, 0.52, 6), jacketMat);
+  chest.scale.set(1.15, 1, 0.9); chest.castShadow = true; chest.receiveShadow = true;
+  // Collar lapel fold
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.24, 0.10, 6, 1, true), mat(darkColor));
+  collar.position.y = 0.28; collar.scale.set(1.1, 1, 0.95);
+  // Neck connector
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.13, 0.14, 5), skinMat);
+  neck.position.y = 0.32;
+  // Utility belt with buckle & side pouch
+  const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.265, 0.265, 0.09, 6), leatherMat);
+  belt.position.y = -0.25; belt.scale.set(1.12, 1, 0.92);
+  const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.08, 0.10), metalMat);
+  buckle.position.set(0.29, -0.25, 0);
+  const pouch = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.12), leatherMat);
+  pouch.position.set(0.05, -0.25, -0.26); pouch.rotation.y = -0.15;
+
+  torsoG.add(chest, collar, neck, belt, buckle, pouch);
+  model.add(torsoG);
+
+  // 2. Head: Chiseled stylized low-poly head with jawline & expressive face
+  const headG = new THREE.Group();
+  headG.position.y = 1.48;
+
+  // Stylized faceted cranium & jaw
+  const headMesh = new THREE.Mesh(new THREE.DodecahedronGeometry(0.29, 0), skinMat);
+  headMesh.scale.set(1.02, 1.15, 0.98); headMesh.castShadow = true;
+
+  // Stylized hair tuft / cap
+  const hairMat = mat(darkerTone, { roughness: 0.85 });
+  const hair = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.22, 5), hairMat);
+  hair.position.set(-0.06, 0.24, 0); hair.rotation.z = 0.35; hair.rotation.y = 0.2;
+
+  // Face texture decal on front (+X)
+  const faceDecal = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.42, 0.42),
+    new THREE.MeshBasicMaterial({ map: faceTexture(look.face), transparent: true })
+  );
+  faceDecal.position.set(0.28, 0.02, 0);
+  faceDecal.rotation.y = Math.PI / 2;
+
+  const hatMesh = buildHat(look.hat, bodyColor.getStyle(), darkColor.getStyle());
+  headG.add(headMesh, hair, faceDecal, hatMesh);
+  model.add(headG);
+
+  // 3. Legs & Explorer Boots (articulated left/right)
+  const legs = [];
   for (const s of [-1, 1]) {
-    const f = new THREE.Mesh(new THREE.IcosahedronGeometry(0.17, 0), dark);
-    f.scale.set(1.3, 0.7, 1); f.position.set(0.05, 0.12, s * 0.2); f.castShadow = true;
-    feet.push(f); model.add(f);
+    const legG = new THREE.Group();
+    legG.position.set(0, 0.58, s * 0.15);
+
+    // Thigh with pants
+    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.09, 0.30, 5), pantsMat);
+    thigh.position.y = -0.15; thigh.castShadow = true;
+
+    // Shin with combat boot
+    const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.26, 5), pantsMat);
+    shin.position.y = -0.38; shin.castShadow = true;
+
+    // Low-poly boot with distinct sole & toe bevel
+    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.13, 0.15), leatherMat);
+    boot.position.set(0.05, -0.52, 0); boot.castShadow = true;
+    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.03, 0.16), mat('#171518', { roughness: 0.9 }));
+    sole.position.set(0.05, -0.59, 0); sole.receiveShadow = true;
+
+    legG.add(thigh, shin, boot, sole);
+    legs.push(legG);
+    model.add(legG);
   }
 
+  // 4. Arms & Hands
+  // Right Arm (Weapon wielding arm)
+  const rightArmG = new THREE.Group();
+  rightArmG.position.set(0.06, 1.05, 0.26);
+
+  const rightUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.24, 5), jacketMat);
+  rightUpperArm.position.set(0.08, -0.10, 0);
+  rightUpperArm.rotation.z = -0.65; rightUpperArm.rotation.y = 0.25;
+
+  const rightForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.24, 5), jacketMat);
+  rightForearm.position.set(0.24, -0.16, -0.04);
+  rightForearm.rotation.z = -1.25;
+
+  rightArmG.add(rightUpperArm, rightForearm);
+
+  // Weapon holder attached to right hand position
   const laserColor = new THREE.Color(look.laser);
   const gunHolder = new THREE.Group();
-  gunHolder.position.set(0.42, 0.85, 0.22);
-  const gun = buildWeaponMesh(look.weapon || 'blaster', laserColor, body);
+  gunHolder.position.set(0.38, 0.88, 0.20);
+  const gun = buildWeaponMesh(look.weapon || 'blaster', laserColor, jacketMat);
   gunHolder.add(gun);
 
-  const hand2 = new THREE.Mesh(new THREE.IcosahedronGeometry(0.11, 0), body);
-  hand2.position.set(0.35, 0.8, -0.2);
+  // Left Arm (Tactical support arm)
+  const leftArmG = new THREE.Group();
+  leftArmG.position.set(0.04, 1.05, -0.26);
 
-  model.add(torso, belt, headG, gunHolder, hand2);
+  const leftUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.24, 5), jacketMat);
+  leftUpperArm.position.set(0.06, -0.10, 0);
+  leftUpperArm.rotation.z = -0.55; leftUpperArm.rotation.y = -0.35;
 
-  // Ground marker (player color), flat & solid
+  const leftForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.22, 5), jacketMat);
+  leftForearm.position.set(0.20, -0.14, 0.08);
+  leftForearm.rotation.z = -1.15; leftForearm.rotation.y = -0.45;
+
+  const leftHand = new THREE.Mesh(new THREE.DodecahedronGeometry(0.09, 0), skinMat);
+  leftHand.position.set(0.31, 0.82, -0.06);
+
+  leftArmG.add(leftUpperArm, leftForearm);
+  model.add(rightArmG, gunHolder, leftArmG, leftHand);
+
+  // 5. Stylized ground indicator ring (low-poly chiseled hexagon)
   const ring = new THREE.Mesh(
-    new THREE.RingGeometry(0.62, 0.76, 6),
-    new THREE.MeshBasicMaterial({ color: laserColor, transparent: true, opacity: 0.9 })
+    new THREE.RingGeometry(0.68, 0.82, 6),
+    new THREE.MeshBasicMaterial({ color: laserColor, transparent: true, opacity: 0.88, side: THREE.DoubleSide })
   );
-  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03;
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02;
   root.add(ring);
 
   root.userData = {
-    model, headG, feet, ring, gunHolder, gun, bodyMat: body, laserColor,
-    weaponId: look.weapon || 'blaster', walk: 0, hat: headG.children[2],
+    model, torsoG, headG, legs, feet: legs, rightArmG, leftArmG, leftHand,
+    ring, gunHolder, gun, bodyMat: jacketMat, laserColor,
+    weaponId: look.weapon || 'blaster', walk: 0, hat: hatMesh,
   };
   return root;
 }
@@ -312,20 +443,60 @@ export function createShowcaseWeapon(weaponId, laserHex = '#e89b3c') {
   return root;
 }
 
+/**
+ * Natural low-poly human animation: coordinated arm/leg swing, body bobbing,
+ * idle breathing, and dynamic weapon tracking.
+ */
 export function animateCharacter(ch, dt, moving, t) {
   const u = ch.userData;
-  if (moving) u.walk += dt * 12; else u.walk *= 0.85;
+  if (!u || !u.legs || u.legs.length < 2) return;
+
+  if (moving) {
+    u.walk += dt * 11;
+  } else {
+    u.walk *= 0.82;
+  }
+
   const s = Math.sin(u.walk);
-  u.feet[0].position.x = 0.05 + s * 0.15;
-  u.feet[1].position.x = 0.05 - s * 0.15;
-  u.model.position.y = Math.abs(Math.sin(u.walk)) * 0.08 + Math.sin(t * 2) * 0.015;
-  u.headG.rotation.z = Math.sin(t * 1.5) * 0.04;
-  if (u.hat?.userData.spin) u.hat.rotation.y += dt * 2;
-  if (u.gun?.userData.spinGem) u.gun.userData.spinGem.rotation.x += dt * 3;
-  u.ring.rotation.z += dt * 0.5;
+  const c = Math.cos(u.walk);
+
+  // Leg swing in opposition
+  u.legs[0].rotation.z = s * 0.55;
+  u.legs[1].rotation.z = -s * 0.55;
+
+  // Arm swing coordinated with legs
+  if (u.leftArmG) u.leftArmG.rotation.x = -s * 0.35;
+  if (u.rightArmG) u.rightArmG.rotation.x = s * 0.20;
+
+  // Vertical body bounce during walk + gentle idle breathing
+  const walkBob = Math.abs(s) * 0.07;
+  const idleBreathe = Math.sin(t * 2.4) * 0.016;
+  u.model.position.y = walkBob + idleBreathe;
+
+  // Subtle torso tilt when walking
+  if (u.torsoG) {
+    u.torsoG.rotation.z = moving ? 0.06 : 0;
+    u.torsoG.rotation.y = s * 0.05;
+  }
+
+  // Head idle motion
+  if (u.headG) {
+    u.headG.rotation.z = Math.sin(t * 1.6) * 0.035;
+    u.headG.position.y = 1.48 + idleBreathe * 0.5;
+  }
+
+  // Accessory animations
+  if (u.hat?.userData?.spin) u.hat.rotation.y += dt * 2.2;
+  if (u.gun?.userData?.spinGem) u.gun.userData.spinGem.rotation.x += dt * 3.2;
+  if (u.ring) u.ring.rotation.z += dt * 0.5;
 }
 
 export function setCharacterOpacity(ch, o) {
-  ch.traverse((m) => { if (m.material) { m.material.opacity = o; m.material.depthWrite = o > 0.95; } });
+  ch.traverse((m) => {
+    if (m.material) {
+      m.material.opacity = o;
+      m.material.depthWrite = o > 0.95;
+    }
+  });
   ch.visible = o > 0.01;
 }

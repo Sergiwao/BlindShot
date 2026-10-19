@@ -11,6 +11,7 @@ import {
   COINS_PER_KILL, COINS_PER_WIN, GRENADE_PRICE, GRENADE_RANGE, GRENADE_RADIUS,
 } from '../../shared/game.js';
 import { LocalGame } from './local.js';
+import { LanManager, scanLocalLan } from './lan.js';
 import { sound } from './sound.js';
 
 // ---------- Helpers ----------
@@ -34,7 +35,7 @@ function show(id) {
     const idx = ARMORY_ITEMS.findIndex((x) => x.id === state.look.weapon);
     if (idx >= 0) armoryIndex = idx;
     renderArmoryShowcase(true);
-  } else if (['name', 'menu', 'create', 'lobby', 'local'].includes(id)) {
+  } else if (['name', 'menu', 'create', 'lobby', 'local', 'lan'].includes(id)) {
     enterMenuScene(id === 'lobby' ? 'lobby' : 'menu');
   }
   syncCoinsUI();
@@ -362,7 +363,12 @@ if (savedServer && savedServer.includes('192.168.')) {
 let serverUrl = savedServer || defaultServer;
 let socket;
 
+let lanManager;
+
 function myId() {
+  if (lanManager?.isLanActive) {
+    return lanManager.isHost ? 'lan_host' : (lanManager.socket?.id || 'lan_guest');
+  }
   return state.offlineMode ? 'local_me' : socket?.id;
 }
 
@@ -596,6 +602,22 @@ const offlineEngine = {
 };
 
 function netEmit(ev, payload, cb) {
+  if (lanManager?.isLanActive) {
+    if (ev === 'input') {
+      lanManager.sendInput(payload);
+    } else if (ev === 'start') {
+      lanManager.startGame(state.look);
+    } else if (ev === 'addBot' || ev === 'bot') {
+      lanManager.addBot();
+    } else if (ev === 'kick') {
+      lanManager.kick(payload?.id || payload);
+    } else if (ev === 'arena') {
+      lanManager.setArena(payload);
+    } else if (ev === 'leave') {
+      lanManager.leave();
+    }
+    return;
+  }
   if (ev === 'create') {
     if (socket?.connected) {
       state.offlineMode = false;
@@ -611,6 +633,22 @@ function netEmit(ev, payload, cb) {
   }
   socket?.emit(ev, payload, cb);
 }
+
+lanManager = new LanManager({
+  toast,
+  onRoom: (r) => onRoom(r),
+  onStart: (p) => onStart(p),
+  onPhase: (p) => onPhase(p),
+  onReveal: (p) => onReveal(p),
+  onSync: (p) => Object.assign(state.me, p),
+  onOver: (p) => onOver(p),
+  onHostLost: () => {
+    const dlg = $('#dlg-lan-host-lost');
+    if (dlg) {
+      try { dlg.showModal(); } catch { dlg.setAttribute('open', ''); }
+    }
+  },
+});
 
 function emitPresence() {
   if (!socket?.connected) return;
@@ -722,6 +760,94 @@ $('#btn-join').onclick = () => {
   });
 };
 $('#input-code').addEventListener('keydown', (e) => e.key === 'Enter' && $('#btn-join').click());
+
+// ---------- LAN Multiplayer Handlers ----------
+$('#btn-menu-lan').onclick = () => {
+  sound.ui('primary');
+  show('lan');
+};
+
+$('#btn-lan-back').onclick = () => {
+  sound.ui('back');
+  show('menu');
+};
+
+$('#btn-lan-host').onclick = () => {
+  sound.ui('primary');
+  state.offlineMode = false;
+  lanManager.createHostRoom({
+    name: state.name || 'Hôte',
+    look: state.look,
+    arena: state.createArena || 'neon',
+  });
+  show('lobby');
+  toast('Salon local créé ! Tes amis peuvent te rejoindre.');
+};
+
+$('#btn-lan-pre-android').onclick = () => {
+  sound.ui();
+  $('#input-lan-ip').value = '192.168.43.1:2567';
+};
+
+$('#btn-lan-pre-iphone').onclick = () => {
+  sound.ui();
+  $('#input-lan-ip').value = '172.20.10.1:2567';
+};
+
+$('#btn-lan-pre-pc').onclick = () => {
+  sound.ui();
+  $('#input-lan-ip').value = 'localhost:2567';
+};
+
+$('#btn-lan-join').onclick = () => {
+  const ip = $('#input-lan-ip').value.trim();
+  if (!ip) return toast('Saisis l\'adresse IP de l\'hôte');
+  sound.ui('primary');
+  state.offlineMode = false;
+  lanManager.joinByIp(ip, { name: state.name, look: state.look }, (res) => {
+    if (res?.ok) {
+      show('lobby');
+      toast('Connecté au salon local !');
+    }
+  });
+};
+$('#input-lan-ip').addEventListener('keydown', (e) => e.key === 'Enter' && $('#btn-lan-join').click());
+
+$('#btn-lan-scan').onclick = async () => {
+  sound.ui();
+  const box = $('#lan-scan-results');
+  box.style.display = 'block';
+  box.innerHTML = '<div style="font-size:12px;color:var(--muted);text-align:center;">Recherche d\'hôtes sur le réseau local…</div>';
+  const found = await scanLocalLan();
+  if (!found.length) {
+    box.innerHTML = '<div style="font-size:12px;color:var(--muted);text-align:center;">Aucun hôte automatique détecté. Utilise les raccourcis Hotspot (192.168.43.1).</div>';
+  } else {
+    box.innerHTML = found.map((h) => `
+      <div class="lan-host-pill" data-ip="${h.ip}">
+        <span>📡 Hôte détecté (${h.ip})</span>
+        <b>Rejoindre &rarr;</b>
+      </div>
+    `).join('');
+    box.querySelectorAll('.lan-host-pill').forEach((pill) => {
+      pill.onclick = () => {
+        const ip = pill.dataset.ip;
+        $('#input-lan-ip').value = ip;
+        $('#btn-lan-join').click();
+      };
+    });
+  }
+};
+
+$('#btn-lan-host-lost-ok').onclick = () => {
+  sound.ui('back');
+  const dlg = $('#dlg-lan-host-lost');
+  try { if (dlg.open) dlg.close(); } catch {}
+  dlg.removeAttribute('open');
+  lanManager.leave();
+  state.room = null;
+  store.set('current_room_code', null);
+  show('menu');
+};
 function closeSettingsDialog() {
   const dlg = $('#dlg-settings');
   if (!dlg) return;
@@ -997,7 +1123,7 @@ $('#btn-create-ok').onclick = () => {
 function onRoom(room) {
   state.room = room;
   const isHost = room.host === myId();
-  $('#lobby-code').textContent = room.code;
+  $('#lobby-code').textContent = room.isLan ? `${room.code} · Local` : room.code;
   const a = ARENAS[room.arena];
   $('#lobby-arena').innerHTML = isHost
     ? `<span>Arène</span><select id="sel-arena">${Object.values(ARENAS).map((x) => `<option value="${x.id}" ${x.id === a.id ? 'selected' : ''}>${x.name}</option>`).join('')}</select>`
@@ -1008,7 +1134,7 @@ function onRoom(room) {
     const li = document.createElement('li');
     const wName = WEAPONS[p.look?.weapon]?.name || 'Blaster';
     li.innerHTML = `<span class="dot" style="background:${p.look.body};border-color:${p.look.laser}"></span><span class="nm">${escapeHtml(p.name)}</span><span class="tag">${wName}</span>${p.bot ? '<span class="tag">Bot</span>' : ''}${p.id === room.host ? '<span class="tag">Hôte</span>' : ''}`;
-    if (isHost && p.bot) {
+    if (isHost && (p.bot || (lanManager?.isLanActive && p.id !== myId()))) {
       const x = document.createElement('button'); x.className = 'x'; x.innerHTML = '&times;';
       x.onclick = () => { sound.ui('back'); netEmit('kick', p.id); };
       li.appendChild(x);
@@ -1023,7 +1149,7 @@ function onRoom(room) {
   $('#btn-bot').disabled = room.players.length >= 6;
   $('#lobby-wait').style.display = isHost ? 'none' : '';
   store.set('current_room_code', room.code);
-  if (room.state === 'lobby' && ['menu', 'create', 'custom', 'armory', 'name'].includes(state.screen)) show('lobby');
+  if (room.state === 'lobby' && ['menu', 'create', 'custom', 'armory', 'name', 'lan'].includes(state.screen)) show('lobby');
 }
 function escapeHtml(s) { return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 $('#btn-bot').onclick = () => { sound.ui(); netEmit('addBot'); };
@@ -1031,6 +1157,7 @@ $('#btn-start').onclick = () => { sound.ui('primary'); netEmit('start'); };
 $('#btn-lobby-leave').onclick = () => {
   sound.ui('back');
   netEmit('leave');
+  if (lanManager?.isLanActive) lanManager.leave();
   state.room = null;
   store.set('current_room_code', null);
   sound.startBgm();
