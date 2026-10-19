@@ -29,6 +29,16 @@
       <div class="intro-credit">Développé par <b>Serge le dev</b></div>
     </div>
   </div>
+  <script>
+    (function() {
+      var sp = document.getElementById('intro-splash');
+      if (sp) {
+        var hide = function() { sp.classList.add('hide'); };
+        sp.addEventListener('pointerdown', hide);
+        setTimeout(hide, 2400);
+      }
+    })();
+  </script>
 
   <main id="ui">
     <!-- NAME -->

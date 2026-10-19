@@ -1592,23 +1592,34 @@ local.hooks = {
 $('#btn-local').onclick = () => { sound.ui('primary'); local.openLobby(); };
 
 // ---------- Boot & Launch Animation ----------
-connect();
-syncCoinsUI();
-renderCustom();
-rebuildMyChar();
-enterMenuScene('menu');
-if (state.name) { $('#menu-name').textContent = state.name; show('menu'); }
-else show('name');
-
 const splash = $('#intro-splash');
+const dismissSplash = () => {
+  if (!splash || splash.classList.contains('hide')) return;
+  try { sound.introWhoosh(); } catch {}
+  splash.classList.add('hide');
+};
 if (splash) {
-  const dismissSplash = () => {
-    if (splash.classList.contains('hide')) return;
-    sound.introWhoosh();
-    splash.classList.add('hide');
-  };
   splash.addEventListener('pointerdown', dismissSplash);
-  setTimeout(() => splash.classList.add('hide'), 2100);
+  setTimeout(dismissSplash, 2100);
+}
+
+try {
+  connect();
+  syncCoinsUI();
+  renderCustom();
+  rebuildMyChar();
+  enterMenuScene('menu');
+  if (state.name) {
+    const mn = $('#menu-name');
+    if (mn) mn.textContent = state.name;
+    show('menu');
+  } else {
+    show('name');
+  }
+} catch (err) {
+  console.error('Boot initialization error:', err);
+  dismissSplash();
+  show(state.name ? 'menu' : 'name');
 }
 
 const unlockAudioAndBgm = () => {

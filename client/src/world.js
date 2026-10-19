@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 // ---------- Stylized Low-Poly PBR Material Helpers ----------
 function rng(seed) {
   let s = seed >>> 0 || 1;

@@ -13,7 +13,7 @@
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <script type="module" crossorigin src="./assets/index-xSGspRkF.js"></script>
+  <script type="module" crossorigin src="./assets/index-mi09OEOo.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-sAmddiYd.css">
 </head>
 <body>
@@ -30,6 +30,16 @@
       <div class="intro-credit">Développé par <b>Serge le dev</b></div>
     </div>
   </div>
+  <script>
+    (function() {
+      var sp = document.getElementById('intro-splash');
+      if (sp) {
+        var hide = function() { sp.classList.add('hide'); };
+        sp.addEventListener('pointerdown', hide);
+        setTimeout(hide, 2400);
+      }
+    })();
+  </script>
 
   <main id="ui">
     <!-- NAME -->
